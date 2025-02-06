@@ -82,9 +82,9 @@ namespace AmiusAdventure {
                 vec2 scale;
                 bool flip_vertical;
                 bool flip_horizontal;
-                void (*tick)(UIObject*, SceneCtx*);
+                void (*tick)(UIObject*, SceneCtx*, Input::InputState*);
                 UIObject();
-                UIObject(UIRenderData, vec3, float_t, vec2, bool, bool, void (*tick)(UIObject*, SceneCtx*));
+                UIObject(UIRenderData, vec3, float_t, vec2, bool, bool, void (*tick)(UIObject*, SceneCtx*, Input::InputState*));
                 ~UIObject();
                 UIHandle* getHandle();
             };
@@ -97,7 +97,8 @@ namespace AmiusAdventure {
 
         enum RenderType {
             RENDER_CUBE,
-            RENDER_MODEL
+            RENDER_MODEL,
+            RENDER_EMPTY
         };
 
         struct RenderData {
@@ -117,9 +118,9 @@ namespace AmiusAdventure {
             vec3 rotation;
             vec3 scale;
             bool isDirty;
-            void (*tick)(Object*, SceneCtx*);
+            void (*tick)(Object*, SceneCtx*, Input::InputState*);
             Object();
-            Object(RenderData, vec3, vec3, vec3, void(*tick)(Object*, SceneCtx*));
+            Object(RenderData, vec3, vec3, vec3, void(*tick)(Object*, SceneCtx*, Input::InputState*));
             ~Object();
             Handle* getHandle();
             void setPosition(vec3);
@@ -134,13 +135,23 @@ namespace AmiusAdventure {
             Object* data;
         };
 
-        struct Camera {
-
-        }__attribute__((packed));
+        class Camera {
+        private:
+            C3D_Mtx transform;
+        public:
+            vec3 position;
+            vec3 rotation;
+            bool isDirty;
+            void(*tick)(Camera*, SceneCtx*, Input::InputState*);
+            Camera(vec3 position, vec3 rotation, void(*)(Camera*, SceneCtx*, Input::InputState*));
+            void LookAt(vec3 target);
+            C3D_Mtx getTransform();
+        };
 
         struct SceneCtx {
             std::chrono::milliseconds deltaTime;
             std::chrono::steady_clock::time_point tickStart;
+            Camera* camera;
         };
 
         class Scene {
@@ -149,7 +160,8 @@ namespace AmiusAdventure {
             std::array<std::optional<UI::UIObject>, 256> uiObjects;
             SceneCtx ctx;
             Scene();
-            void tick();
+            ~Scene();
+            void tick(Input::InputState*);
         };
     }
 

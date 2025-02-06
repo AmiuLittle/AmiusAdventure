@@ -1,148 +1,37 @@
 #include "amius_adventure.hpp"
 #include <c3d/maths.h>
+#include "cameraMove.hpp"
 
 using namespace AmiusAdventure::Scene;
-
-void Mtx_Scale(C3D_Mtx* mtx, float x, float y, float z)
-{
-	int i;
-	for (i = 0; i < 4; ++i)
-	{
-		mtx->r[i].x *= x;
-		mtx->r[i].y *= y;
-		mtx->r[i].z *= z;
-	}
-}
-
-void Mtx_RotateX(C3D_Mtx* mtx, float angle, bool bRightSide)
-{
-	float  a, b;
-	float  cosAngle = cosf(angle);
-	float  sinAngle = sinf(angle);
-	size_t i;
-
-	if (bRightSide)
-	{
-		for (i = 0; i < 4; ++i)
-		{
-			a = mtx->r[i].y*cosAngle + mtx->r[i].z*sinAngle;
-			b = mtx->r[i].z*cosAngle - mtx->r[i].y*sinAngle;
-			mtx->r[i].y = a;
-			mtx->r[i].z = b;
-		}
-	}
-	else
-	{
-		for (i = 0; i < 4; ++i)
-		{
-			a = mtx->r[1].c[i]*cosAngle - mtx->r[2].c[i]*sinAngle;
-			b = mtx->r[2].c[i]*cosAngle + mtx->r[1].c[i]*sinAngle;
-			mtx->r[1].c[i] = a;
-			mtx->r[2].c[i] = b;
-		}
-	}
-}
-
-void Mtx_RotateY(C3D_Mtx* mtx, float angle, bool bRightSide)
-{
-	float  a, b;
-	float  cosAngle = cosf(angle);
-	float  sinAngle = sinf(angle);
-	size_t i;
-
-	if (bRightSide)
-	{
-		for (i = 0; i < 4; ++i)
-		{
-			a = mtx->r[i].x*cosAngle - mtx->r[i].z*sinAngle;
-			b = mtx->r[i].z*cosAngle + mtx->r[i].x*sinAngle;
-			mtx->r[i].x = a;
-			mtx->r[i].z = b;
-		}
-	}
-	else
-	{
-		for (i = 0; i < 4; ++i)
-		{
-			a = mtx->r[0].c[i]*cosAngle + mtx->r[2].c[i]*sinAngle;
-			b = mtx->r[2].c[i]*cosAngle - mtx->r[0].c[i]*sinAngle;
-			mtx->r[0].c[i] = a;
-			mtx->r[2].c[i] = b;
-		}
-	}
-}
-
-void Mtx_RotateZ(C3D_Mtx* mtx, float angle, bool bRightSide)
-{
-	float  a, b;
-	float  cosAngle = cosf(angle);
-	float  sinAngle = sinf(angle);
-	size_t i;
-
-	if (bRightSide)
-	{
-		for (i = 0; i < 4; ++i)
-		{
-			a = mtx->r[i].x*cosAngle + mtx->r[i].y*sinAngle;
-			b = mtx->r[i].y*cosAngle - mtx->r[i].x*sinAngle;
-			mtx->r[i].x = a;
-			mtx->r[i].y = b;
-		}
-	}
-	else
-	{
-		for (i = 0; i < 4; ++i)
-		{
-			a = mtx->r[0].c[i]*cosAngle - mtx->r[1].c[i]*sinAngle;
-			b = mtx->r[1].c[i]*cosAngle + mtx->r[0].c[i]*sinAngle;
-			mtx->r[0].c[i] = a;
-			mtx->r[1].c[i] = b;
-		}
-	}
-}
-
-void Mtx_Translate(C3D_Mtx* mtx, float x, float y, float z, bool bRightSide)
-{
-
-	C3D_FVec v = FVec4_New(x, y, z, 1.0f);
-	int i, j;
-
-	if (bRightSide)
-	{
-		for (i = 0; i < 4; ++i)
-			mtx->r[i].w = FVec4_Dot(mtx->r[i], v);
-	}
-	else
-	{
-		for (j = 0; j < 3; ++j)
-			for (i = 0; i < 4; ++i)
-				mtx->r[j].c[i] += mtx->r[3].c[i] * v.c[3-j];
-	}
-
-}
 
 Scene::Scene() {
     std::fill(objects.begin(), objects.end(), std::nullopt);
     std::fill(uiObjects.begin(), uiObjects.end(), std::nullopt);
     this->ctx = SceneCtx {
         .deltaTime = std::chrono::milliseconds(),
-        .tickStart = std::chrono::steady_clock::now()
+        .tickStart = std::chrono::steady_clock::now(),
+		.camera = new Camera(vec3{0, 0, 0}, vec3{0, 0, 0}, moveCamera)
     };
 }
 
-void Scene::tick() {
+Scene::~Scene() {
+	delete this->ctx.camera;
+}
+
+void Scene::tick(Input::InputState* inputState) {
     this->ctx.deltaTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this->ctx.tickStart);
     this->ctx.tickStart = std::chrono::steady_clock::now();
     for (int i = 0; i < this->objects.size(); i++) {
         if (this->objects[i].has_value() && (*this->objects[i]).tick != nullptr) {
-            (*this->objects[i]).tick(&(*this->objects[i]), &this->ctx);
+            (*this->objects[i]).tick(&(*this->objects[i]), &this->ctx, inputState);
         }
     }
     for (int i = 0; i < this->uiObjects.size(); i++) {
         if (this->uiObjects[i].has_value() && (*this->uiObjects[i]).tick != nullptr) {
-            (*this->uiObjects[i]).tick(&(*this->uiObjects[i]), &this->ctx);
+            (*this->uiObjects[i]).tick(&(*this->uiObjects[i]), &this->ctx, inputState);
         }
     }
+    this->ctx.camera->tick(this->ctx.camera, &this->ctx, inputState);
 }
 
 Object::Object() : data(RenderData {
@@ -156,7 +45,7 @@ Object::~Object() {
     if (this->handle != nullptr) this->handle->valid = false;
 }
 
-Object::Object(RenderData data, vec3 position = vec3{0, 0, 0}, vec3 rotation = vec3{0, 0, 0}, vec3 scale = vec3{1, 1, 1}, void(*tick)(Object*, SceneCtx*) = nullptr) : 
+Object::Object(RenderData data, vec3 position = vec3{0, 0, 0}, vec3 rotation = vec3{0, 0, 0}, vec3 scale = vec3{1, 1, 1}, void(*tick)(Object*, SceneCtx*, Input::InputState*) = nullptr) : 
 data(data), position{position[0], position[1], position[2]}, rotation{rotation[0], rotation[1], rotation[2]}, scale{scale[0], scale[1], scale[2]}, tick(tick) {}
 
 AmiusAdventure::Scene::Handle* Object::getHandle() {
@@ -216,7 +105,7 @@ UI::UIObject::~UIObject() {
     if (this->handle != nullptr) this->handle->valid = false;
 }
 
-UI::UIObject::UIObject(UIRenderData data, vec3 position = vec3{0, 0, 0}, float_t rotation = 0, vec2 scale = vec2{1, 1}, bool flip_vertical = false, bool flip_horizontal = false, void (*tick)(UIObject*, SceneCtx*) = nullptr) : 
+UI::UIObject::UIObject(UIRenderData data, vec3 position = vec3{0, 0, 0}, float_t rotation = 0, vec2 scale = vec2{1, 1}, bool flip_vertical = false, bool flip_horizontal = false, void (*tick)(UIObject*, SceneCtx*, Input::InputState*) = nullptr) : 
 data(data), position{position[0], position[1], position[2]}, rotation(rotation), scale{scale[0], scale[1]}, flip_vertical(flip_vertical), flip_horizontal(flip_horizontal), tick(tick) {}
 
 UI::UIHandle* UI::UIObject::getHandle() {

@@ -28,6 +28,8 @@ C3D_RenderTarget* topLeft = nullptr;
 C3D_RenderTarget* topRight = nullptr;
 C3D_RenderTarget* bottom = nullptr;
 
+C3D_Mtx cameraView;
+
 C2D_TextBuf textBuf;
 
 std::map<std::string, TextureData> loadedTextures;
@@ -207,7 +209,10 @@ bool drawCube(std::string texture, C3D_Mtx modelView) {
         C3D_TexBind(0, &loadedTextures[texture].tex);
     }
 
-    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &modelView);
+    C3D_Mtx adjustedView;
+    Mtx_Multiply(&adjustedView, &cameraView, &modelView);
+
+    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &adjustedView);
 
 	C3D_SetBufInfo(&vbo_bufInfo);
     C3D_DrawArrays(GPU_TRIANGLES, 0, cube_vertex_list_count);
@@ -231,7 +236,10 @@ bool drawModel(std::string model, std::string texture, C3D_Mtx modelView) {
         }
     }
 
-    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &modelView);
+    C3D_Mtx adjustedView;
+    Mtx_Multiply(&adjustedView, &cameraView, &modelView);
+
+    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &adjustedView);
 
     for (auto mesh = loadedModels[model].meshes.begin(); mesh != loadedModels[model].meshes.end(); ++mesh) {
         for (auto primitive = mesh->primitives.begin(); primitive != mesh->primitives.end(); ++primitive) {
@@ -265,6 +273,9 @@ void gfxUpdateTop(AmiusAdventure::Scene::Scene* scene, float iod) {
     Mtx_PerspStereoTilt(&projection, C3D_AngleFromDegrees(40), C3D_AspectRatioTop, 0.01f, 1000.0f, iod, 2.0f, false);
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
 
+    cameraView = scene->ctx.camera->getTransform();
+    Mtx_Inverse(&cameraView);
+
     C3D_FVec lightPos = FVec4_New(16.0f, 0.5f, 0.0f, 0.0f);
     C3D_LightPosition(&light, &lightPos);
 
@@ -277,6 +288,8 @@ void gfxUpdateTop(AmiusAdventure::Scene::Scene* scene, float iod) {
                 break;
             case AmiusAdventure::Scene::RENDER_MODEL:
                 drawModel(object->data.model, object->data.texture, object->getTransform());
+                break;
+            default:
                 break;
             }
         }
@@ -292,6 +305,8 @@ void gfxUpdateTop(AmiusAdventure::Scene::Scene* scene, float iod) {
             switch (object->data.type) {
             case AmiusAdventure::Scene::UI::RENDER_TEXT:
                 drawText(object->data.text, object->position, object->scale, object->data.basecolor, object->data.align, object->data.dimension[0], true);
+                break;
+            default:
                 break;
             } 
         }

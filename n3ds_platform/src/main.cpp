@@ -3,6 +3,7 @@
 #include <tuple>
 #include <3ds.h>
 #include <stdlib.h>
+#include <iostream>
 #include "amius_adventure.hpp"
 #include "channel.hpp"
 #include "n3dslink.hpp"
@@ -20,6 +21,7 @@ int main() {
     if (!init3dslinkStdio()) {
         softPanic("could not init SOC");
     }
+    std::cout << "Sanity Check\n";
 
     unlockCore1(); // necessary for sound
 

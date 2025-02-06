@@ -24,8 +24,8 @@ bool Engine::update(Input::InputState inputState, Scene::Scene* topScene, Scene:
         softPanic("User initiated test");
     }
 
-    topScene->tick();
-    bottomScene->tick();
+    topScene->tick(&inputState);
+    bottomScene->tick(&inputState);
 
     return false;
 }

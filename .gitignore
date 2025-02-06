@@ -30,3 +30,12 @@
 *.exe
 *.out
 *.app
+*.elf
+*.3dsx
+
+# 3ds Things
+*.map
+
+# Build Directories
+*/build
+n3ds_platform/romfs/gfx

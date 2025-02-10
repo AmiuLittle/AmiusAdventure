@@ -29,6 +29,7 @@ C3D_RenderTarget* topRight = nullptr;
 C3D_RenderTarget* bottom = nullptr;
 
 C3D_Mtx cameraView;
+C3D_Mtx spriteCameraView;
 
 C2D_TextBuf textBuf;
 
@@ -41,8 +42,6 @@ static shaderProgram_s shaderProgram;
 static int uLoc_projection, uLoc_modelView;
 static C3D_Mtx projection;
 static C3D_AttrInfo vbo_attrInfo;
-static void* vbo_data;
-static C3D_BufInfo vbo_bufInfo;
 static C3D_LightEnv lightEnv;
 static C3D_Light light;
 static C3D_LightLut lut_Spec;
@@ -138,12 +137,6 @@ bool initGfx() {
     AttrInfo_AddLoader(&vbo_attrInfo, 1, GPU_FLOAT, 2);
     AttrInfo_AddLoader(&vbo_attrInfo, 2, GPU_FLOAT, 3);
 
-    vbo_data = linearAlloc(sizeof(CUBE));
-    memcpy(vbo_data, CUBE, sizeof(CUBE));
-
-    BufInfo_Init(&vbo_bufInfo);
-    BufInfo_Add(&vbo_bufInfo, vbo_data, sizeof(Vertex), 3, 0x210);
-
     C3D_LightEnvInit(&lightEnv);
     C3D_LightEnvMaterial(&lightEnv, &lightMaterial);
 
@@ -209,12 +202,33 @@ bool drawCube(std::string texture, C3D_Mtx modelView) {
         C3D_TexBind(0, &loadedTextures[texture].tex);
     }
 
+    if (loadedModels.find("cube") == loadedModels.end()) {
+        loadedModels.insert(std::pair("cube", ModelData {
+            .meshes = { Mesh { 
+                .primitives = { Primitive {
+                    .type = PRIMITIVE_VBO_ONLY,
+                    .vbo_data = nullptr,
+                    .vbo_count = cube_vertex_list_count,
+                    .idx_data = nullptr,
+                    .idx_count = 0,
+                    .idx_type = 0,
+                    .vbo_info = C3D_BufInfo {}
+                } }
+            } }
+        }));
+        Primitive* cube = &loadedModels["cube"].meshes.back().primitives.back();
+        cube->vbo_data = linearAlloc(sizeof(CUBE));
+        memcpy(cube->vbo_data, CUBE, sizeof(CUBE));
+        BufInfo_Init(&cube->vbo_info);
+        BufInfo_Add(&cube->vbo_info, cube->vbo_data, sizeof(Vertex), 3, 0x210);
+    }
+
     C3D_Mtx adjustedView;
     Mtx_Multiply(&adjustedView, &cameraView, &modelView);
 
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &adjustedView);
 
-	C3D_SetBufInfo(&vbo_bufInfo);
+    C3D_SetBufInfo(&loadedModels["cube"].meshes.back().primitives.back().vbo_info);
     C3D_DrawArrays(GPU_TRIANGLES, 0, cube_vertex_list_count);
 
     return true;
@@ -257,6 +271,18 @@ bool drawModel(std::string model, std::string texture, C3D_Mtx modelView) {
     return true;
 }
 
+void draw3dSprite(std::string texture, vec3 position, vec3 scale, AmiusAdventure::Scene::SpriteData* spriteData, u32 animationTimer, C3D_Mtx modelView) {
+    if (texture.compare("none") != 0) {
+        if(!loadTex(texture)) {
+            softPanic(getErr());
+        }
+        C3D_TexBind(0, &loadedTextures[texture].tex);
+    }
+    
+    C3D_Mtx adjustedView;
+    Mtx_Multiply(&adjustedView, &spriteCameraView, &modelView);
+}
+
 void drawText(std::string text, vec3 position, vec2 scale, u32 color, AmiusAdventure::Scene::UI::TextAlign align, float width, bool topScreen) {
     C2D_Text c2dText;
     C2D_TextParse(&c2dText, textBuf, text.c_str());
@@ -270,11 +296,16 @@ void gfxUpdateTop(AmiusAdventure::Scene::Scene* scene, float iod) {
     // top screen
     sceneBind();
 
-    Mtx_PerspStereoTilt(&projection, C3D_AngleFromDegrees(40), C3D_AspectRatioTop, 0.01f, 1000.0f, iod, 2.0f, false);
+    Mtx_PerspStereoTilt(&projection, scene->ctx.camera->fovY, scene->ctx.camera->aspect, scene->ctx.camera->zNear, scene->ctx.camera->zFar, iod, 2.0f, false);
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
 
     cameraView = scene->ctx.camera->getTransform();
     Mtx_Inverse(&cameraView);
+
+    Mtx_Copy(&spriteCameraView, &cameraView);
+    Mtx_RotateX(&spriteCameraView, scene->ctx.camera->rotation[0], false);
+    Mtx_RotateY(&spriteCameraView, scene->ctx.camera->rotation[1], false);
+    Mtx_RotateZ(&spriteCameraView, scene->ctx.camera->rotation[2], false);
 
     C3D_FVec lightPos = FVec4_New(16.0f, 0.5f, 0.0f, 0.0f);
     C3D_LightPosition(&light, &lightPos);

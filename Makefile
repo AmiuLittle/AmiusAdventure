@@ -9,3 +9,6 @@ clean:
 
 testlib:
 	cd amius_adventure && make test
+
+spritemaker:
+	cd n3ds_sprite_maker && make all

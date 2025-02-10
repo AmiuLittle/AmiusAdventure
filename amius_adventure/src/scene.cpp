@@ -4,13 +4,14 @@
 
 using namespace AmiusAdventure::Scene;
 
-Scene::Scene() {
+Scene::Scene(Camera* camera) {
     std::fill(objects.begin(), objects.end(), std::nullopt);
     std::fill(uiObjects.begin(), uiObjects.end(), std::nullopt);
     this->ctx = SceneCtx {
         .deltaTime = std::chrono::milliseconds(),
         .tickStart = std::chrono::steady_clock::now(),
-		.camera = new Camera(vec3{0, 0, 0}, vec3{0, 0, 0}, moveCamera)
+		.camera = camera,
+        .animationTimer = 0
     };
 }
 
@@ -31,7 +32,10 @@ void Scene::tick(Input::InputState* inputState) {
             (*this->uiObjects[i]).tick(&(*this->uiObjects[i]), &this->ctx, inputState);
         }
     }
-    this->ctx.camera->tick(this->ctx.camera, &this->ctx, inputState);
+    if (this->ctx.camera->tick != nullptr) {
+        this->ctx.camera->tick(this->ctx.camera, &this->ctx, inputState);
+    }
+    this->ctx.animationTimer += this->ctx.deltaTime.count();
 }
 
 Object::Object() : data(RenderData {
@@ -91,6 +95,10 @@ C3D_Mtx Object::getTransform() {
         this->isDirty = false;
     }
     return this->transform;
+}
+
+bool Object::isVisible(Math::Frustum* frustum) {
+
 }
  
 UI::UIObject::UIObject() : data(UI::UIRenderData {

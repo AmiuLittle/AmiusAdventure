@@ -11,6 +11,24 @@ typedef uint32_t u32;
 
 namespace AmiusAdventure {
 
+    namespace Math {
+        struct Plane {
+            vec3 normal = {0.0f, 1.0f, 0.0f};
+            float distance = 0.0f;
+        };
+
+        struct Frustum {
+            Plane topFace;
+            Plane bottomFace;
+            
+            Plane rightFace;
+            Plane leftFace;
+
+            Plane nearFace;
+            Plane farFace;
+        };
+    }
+
     namespace Input {
         // taken straight from 3ds/services/hid.h
         #define BIT(n) (1U<<(n))
@@ -50,6 +68,15 @@ namespace AmiusAdventure {
     namespace Scene {
         struct Handle;
         struct SceneCtx;
+
+        struct SpriteData {
+            vec2 spriteDimension; // The dimension of each individual sprite on the spritesheet
+            u32 currentAnimation; // used to specify which row of sprites to use
+            u32 animationStart; // The value of the animation timer when the animation started
+            u32 animationTime; // how many frames are in an animation if time > perRow then the next row will be used in the animation
+            u32 animationStep; // how much time should pass between frames in ms
+            u32 framesPerRow; // how many frames inhabit one row
+        };
 
         namespace UI {
             struct UIHandle;
@@ -98,15 +125,17 @@ namespace AmiusAdventure {
         enum RenderType {
             RENDER_CUBE,
             RENDER_MODEL,
+            RENDER_3DSPRITE,
             RENDER_EMPTY
         };
 
         struct RenderData {
             RenderType type;
             std::string model;
-            std::string texture;
+            std::string texture; // normally a path to a t3x file, will be treated as a path to an .alst file if RenderType is set to RENDER_3DSPRITE
             vec3 dimension;
-        }__aligned(8);
+            std::optional<SpriteData> spriteData;
+        };
 
         class Object {
         private:
@@ -127,6 +156,7 @@ namespace AmiusAdventure {
             void setRotation(quat);
             void setScale(vec3);
             C3D_Mtx getTransform();
+            bool isVisible(Math::Frustum*);
         };
 
         struct Handle {
@@ -138,20 +168,27 @@ namespace AmiusAdventure {
         class Camera {
         private:
             C3D_Mtx transform;
+            Math::Frustum frustum;
         public:
             vec3 position;
             vec3 rotation;
+            float zNear;
+            float zFar;
+            float fovY;
+            float aspect;
             bool isDirty;
             void(*tick)(Camera*, SceneCtx*, Input::InputState*);
-            Camera(vec3 position, vec3 rotation, void(*)(Camera*, SceneCtx*, Input::InputState*));
+            Camera(vec3, vec3, float, float, float, float, void(*)(Camera*, SceneCtx*, Input::InputState*));
             void LookAt(vec3 target);
             C3D_Mtx getTransform();
+            Math::Frustum generateFrustum();
         };
 
         struct SceneCtx {
             std::chrono::milliseconds deltaTime;
             std::chrono::steady_clock::time_point tickStart;
             Camera* camera;
+            u32 animationTimer; // ticks once every ms
         };
 
         class Scene {
@@ -159,7 +196,7 @@ namespace AmiusAdventure {
             std::array<std::optional<Object>, 256> objects;
             std::array<std::optional<UI::UIObject>, 256> uiObjects;
             SceneCtx ctx;
-            Scene();
+            Scene(Camera*);
             ~Scene();
             void tick(Input::InputState*);
         };
@@ -186,8 +223,6 @@ namespace AmiusAdventure {
     private:
         std::string platform;
         void(*softPanic)(std::string);
-        Scene::Scene topScreen;
-        Scene::Scene bottomScreen;
     public:
         /// @brief Runs init 
         /// @param platform a string representing the platform the game is running on

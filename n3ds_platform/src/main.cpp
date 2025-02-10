@@ -2,6 +2,7 @@
 #include <fstream>
 #include <tuple>
 #include <3ds.h>
+#include <c3d/maths.h>
 #include <stdlib.h>
 #include <iostream>
 #include "amius_adventure.hpp"
@@ -16,12 +17,10 @@ int main() {
     if (!initGfx()) {
         softPanic("could not init GFX: " + getErr());
     }
-    //consoleSelect(consoleInit(GFX_BOTTOM, NULL));
 
     if (!init3dslinkStdio()) {
         softPanic("could not init SOC");
     }
-    std::cout << "Sanity Check\n";
 
     unlockCore1(); // necessary for sound
 
@@ -31,8 +30,11 @@ int main() {
     }
     atexit([](){romfsExit();});
 
-    AmiusAdventure::Scene::Scene* topScene = new AmiusAdventure::Scene::Scene();
-    AmiusAdventure::Scene::Scene* bottomScene = new AmiusAdventure::Scene::Scene();
+    AmiusAdventure::Scene::Camera* topCamera = new AmiusAdventure::Scene::Camera(vec3{0, 0, 0}, vec3{0, 0, 0}, 0.01f, 1000.0f, (float)C3D_AngleFromDegrees(40.0f), C3D_AspectRatioTop, nullptr);
+    AmiusAdventure::Scene::Camera* bottomCamera = new AmiusAdventure::Scene::Camera(vec3{0, 0, 0}, vec3{0, 0, 0}, 0.01f, 1000.0f, (float)C3D_AngleFromDegrees(40.0f), C3D_AspectRatioBot, nullptr);
+
+    AmiusAdventure::Scene::Scene* topScene = new AmiusAdventure::Scene::Scene(topCamera);
+    AmiusAdventure::Scene::Scene* bottomScene = new AmiusAdventure::Scene::Scene(bottomCamera);
 
     AmiusAdventure::Engine* engine = new AmiusAdventure::Engine("3DS", softPanic, topScene, bottomScene);
 

@@ -39,3 +39,6 @@
 # Build Directories
 */build
 n3ds_platform/romfs/gfx
+
+# I don't wanna get sued by nintendo
+n3ds_platform/gfx/mario

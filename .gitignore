@@ -32,6 +32,7 @@
 *.app
 *.elf
 *.3dsx
+*.x86_64
 
 # 3ds Things
 *.map
@@ -43,6 +44,9 @@ n3ds_platform/romfs/gfx
 
 # I don't wanna get sued by nintendo
 n3ds_platform/gfx/mario
+
+# output directories
+target/
 
 # Proton stuff
 GLCache/

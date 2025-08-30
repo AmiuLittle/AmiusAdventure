@@ -55,6 +55,7 @@ static const C3D_Material lightMaterial =
     { 0.0f, 0.0f, 0.0f }, //emission
 };
 
+// GLM is column-major but C3D is row-major (at least I think, when I eliminate the glm::transpose call I don't see anything on screen)
 C3D_Mtx mat4x4_to_C3D_Mtx(glm::mat4x4* mat) {
     C3D_Mtx mtx;
     memcpy(&mtx.r, glm::value_ptr(glm::transpose(*mat)), sizeof(glm::mat4x4));

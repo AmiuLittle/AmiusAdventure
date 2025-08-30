@@ -232,7 +232,7 @@ bool drawCube(std::string texture, C3D_Mtx modelView) {
     }
 
     C3D_Mtx adjustedView;
-    Mtx_Multiply(&adjustedView, &cameraView, &modelView);
+    Mtx_Multiply(&adjustedView, &modelView, &cameraView);
 
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &adjustedView);
 
@@ -259,7 +259,7 @@ bool drawModel(std::string model, std::string texture, C3D_Mtx modelView) {
     }
 
     C3D_Mtx adjustedView;
-    Mtx_Multiply(&adjustedView, &cameraView, &modelView);
+    Mtx_Multiply(&adjustedView, &modelView, &cameraView);
 
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &adjustedView);
 

@@ -18,8 +18,8 @@ Engine::Engine(std::string platform, void(*softPanic)(std::string), Scene::Scene
     topScene->uiObjects[0] = NEW_UI_TEXT("Platform: " + platform, 1, 0xFFFFFFFF, Scene::UI::ALIGN_LEFT, 0, 0, 0, 0.0F, .5, .5, false, false, nullptr);
     topScene->uiObjects[1] = NEW_UI_TEXT("Delta Time: 0ms", 1, 0xFFFFFFFF, Scene::UI::ALIGN_LEFT, 0, .06, 0, 0, 0.5, 0.5, false, false, fpsCounterTick);
 
-    topScene->objects[0] = NEW_CUBE(assetProvider->getAssetLocation("/gfx/commonTex", TEXTURE_ASSET_TYPE), 1, 1, 1, 0.25, 0, -3.0, 0, 0, 0, 1, 1, 1, rotateCubeTick);
-    topScene->objects[1] = NEW_MODEL(assetProvider->getAssetLocation("/models/3ds_test_model", MODEL_ASSET_TYPE), assetProvider->getAssetLocation("/gfx/3ds_test_model", TEXTURE_ASSET_TYPE), -0.25, 0, -3.0, 0, 0, 0, 0.5, 0.5, 0.5, rotateCubeTick);
+    topScene->objects[0] = NEW_CUBE(assetProvider->getAssetLocation("/gfx/commonTex", TEXTURE_ASSET_TYPE), 1, 1, 1, 0.25, 0, -3.0, 0, 0, 0, 1, 1, 1, /*rotateCubeTick*/ nullptr);
+    topScene->objects[1] = NEW_MODEL(assetProvider->getAssetLocation("/models/3ds_test_model", MODEL_ASSET_TYPE), assetProvider->getAssetLocation("/gfx/3ds_test_model", TEXTURE_ASSET_TYPE), -0.25, 0, -3.0, 0, 0, 90 * (M_PI/180), 0.5, 0.5, 0.5, /*rotateCubeTick*/ nullptr);
     // no assets yet
     // topScene->objects[2] = NEW_3D_SPRITE("romfs:/gfx/marioTex.t3x", 1, 1, 64, 64, 41, 25, 250, 12, 0, 0, 0, 1, 1, frontPlayerTick);
 

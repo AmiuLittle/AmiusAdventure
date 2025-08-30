@@ -100,7 +100,20 @@
         "csignal": "cpp",
         "*.ipp": "cpp",
         "scope": "cpp",
-        "ranges": "cpp"
+        "ranges": "cpp",
+        "barrier": "cpp",
+        "cuchar": "cpp",
+        "expected": "cpp",
+        "regex": "cpp",
+        "flat_map": "cpp",
+        "flat_set": "cpp",
+        "generator": "cpp",
+        "latch": "cpp",
+        "print": "cpp",
+        "scoped_allocator": "cpp",
+        "spanstream": "cpp",
+        "stacktrace": "cpp",
+        "syncstream": "cpp"
     },
     "C_Cpp.default.defines": [
         "__3DS__",

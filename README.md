@@ -9,3 +9,29 @@ I'm making the game engine ([amius_adventure](amius_adventure/)) and hardware ro
 right now I plan on making a Nintendo 3DS version and PC Version (Win/Mac/Linux) of the game.
 </br>
 If you want to see the game ported to another platform, feel free to make a feature request for it. Or if you're feeling adventurous you can check out [PORTING.md](PORTING.md) to see how you could port the game yourself.
+
+## Building
+### Requirements
+- GNU Make
+- DevkitPro 3DS Packages
+    - devkitARM
+    - libctru
+    - citro3d
+    - citro2d
+    - 3ds-pkg-config
+    - 3ds-libvorbisidec
+    - 3ds-opusfile
+
+### Building
+
+#### Linux
+
+targeting 3DS:
+```sh
+make 3dsx
+```
+
+targeting linux:
+```sh
+make linux
+```

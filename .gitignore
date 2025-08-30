@@ -36,6 +36,7 @@
 
 # 3ds Things
 *.map
+*.smdh
 
 # Build Directories
 */build/

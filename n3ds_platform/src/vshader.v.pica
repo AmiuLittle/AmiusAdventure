@@ -3,7 +3,7 @@
 ; https://github.com/fincs/picasso/blob/master/Manual.md
 
 ; Uniforms
-.fvec projection[4], modelView[4]
+.fvec projection[4], cameraView[4], modelView[4]
 
 ; Constants
 .constf myconst(0.0, 1.0, -1.0, 0.5)
@@ -36,14 +36,20 @@
 	dp4 r1.z, modelView[2], r0
 	dp4 r1.w, modelView[3], r0
 
-	; outview = -r1
-	mov outview, -r1
+	; r2 = modelview * cameraView
+	dp4 r2.x, cameraView[0], r1
+	dp4 r2.y, cameraView[1], r1
+	dp4 r2.z, cameraView[2], r1
+	dp4 r2.w, cameraView[3], r1
+
+	; outview = -r2
+	mov outview, -r2
 	
 	; outpos = modelview projection matrix, (projection * results)
-	dp4 outpos.x, projection[0], r1
-	dp4 outpos.y, projection[1], r1
-	dp4 outpos.z, projection[2], r1
-	dp4 outpos.w, projection[3], r1
+	dp4 outpos.x, projection[0], r2
+	dp4 outpos.y, projection[1], r2
+	dp4 outpos.z, projection[2], r2
+	dp4 outpos.w, projection[3], r2
 
 	; outtex = intex
 	mov outtc0, intex

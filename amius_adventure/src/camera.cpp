@@ -9,8 +9,9 @@ Camera::Camera(glm::vec3 position, glm::vec3 rotation, float zNear, float zFar, 
 glm::mat4x4* Camera::getTransform() {
     if (this->isDirty) {
         this->transform = glm::mat4x4(1.0f);
-        this->transform = glm::translate(this->transform, this->position);
         this->transform = this->transform * glm::mat4_cast(glm::quat(this->rotation));
+        this->transform = glm::translate(this->transform, this->position);
+        this->transform = glm::inverse(this->transform);
         this->isDirty = false;
     }
     return &this->transform;

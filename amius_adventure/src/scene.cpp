@@ -90,9 +90,9 @@ void Object::setScale(glm::vec3 scale) {
 glm::mat4x4* Object::getTransform() {
     if (this->isDirty) {
         this->transform = glm::mat4x4(1.0f);
-        this->transform = glm::translate(this->transform, this->position);
-        this->transform = this->transform * glm::mat4_cast(glm::quat(this->rotation));
         this->transform = glm::scale(this->transform, this->scale);
+        this->transform = this->transform * glm::mat4_cast(glm::quat(this->rotation));
+        this->transform = glm::translate(this->transform, this->position);
         this->isDirty = false;
     }
     return &this->transform;

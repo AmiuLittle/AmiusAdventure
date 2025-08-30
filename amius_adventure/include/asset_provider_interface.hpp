@@ -11,7 +11,9 @@ namespace AmiusAdventure {
     };
     
     struct AssetProviderInterface {
-        virtual std::string getAssetLocation(std::string path, AssetType type);
+        explicit AssetProviderInterface() {}
+        virtual ~AssetProviderInterface() = default;
+        virtual std::string getAssetLocation(std::string path, AssetType type) = 0;
     };
 }
 

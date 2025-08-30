@@ -8,10 +8,15 @@
 #include "error.hpp"
 #include "render.hpp"
 #include "assetProvider.hpp"
+#include "audio.hpp"
 
 SDL_Window* mainWindow = nullptr;
+AudioEngine* audioEngine = nullptr;
 
 void exitGame(int exitCode) {
+    if (audioEngine != nullptr) {
+        delete audioEngine;
+    }
     gfxQuit();
     if (mainWindow) {
         SDL_DestroyWindow(mainWindow);
@@ -51,12 +56,13 @@ int main(int argc, char** argv) {
 
     SDL_ShowWindow(mainWindow);
 
-    
+    audioEngine = new AudioEngine();
+
     AmiusAdventure::Scene::Camera* topCamera = new AmiusAdventure::Scene::Camera(glm::vec3{0, 0, 0}, glm::vec3{0, 0, 0}, 0.01f, 1000.0f, DegreesToRadians(40.0f), aspectRatio, nullptr);
     AmiusAdventure::Scene::Camera* bottomCamera = new AmiusAdventure::Scene::Camera(glm::vec3{0, 0, 0}, glm::vec3{0, 0, 0}, 0.01f, 1000.0f, DegreesToRadians(40.0f), aspectRatio, nullptr);
     
-    AmiusAdventure::Scene::Scene* topScene = new AmiusAdventure::Scene::Scene(topCamera, nullptr);
-    AmiusAdventure::Scene::Scene* bottomScene = new AmiusAdventure::Scene::Scene(bottomCamera, nullptr);
+    AmiusAdventure::Scene::Scene* topScene = new AmiusAdventure::Scene::Scene(topCamera, audioEngine);
+    AmiusAdventure::Scene::Scene* bottomScene = new AmiusAdventure::Scene::Scene(bottomCamera, audioEngine);
     
     AssetProvider* assetProvider = new AssetProvider();
     AmiusAdventure::Engine* engine = new AmiusAdventure::Engine("PC", exitWithErrorWindow, topScene, bottomScene, assetProvider);

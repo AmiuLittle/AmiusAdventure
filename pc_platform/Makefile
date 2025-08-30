@@ -36,7 +36,7 @@ clean:
 windows:
 	mkdir -p build/$(ARCH)/windows
 	cp -r data build/$(ARCH)/windows
-	cd build/$(ARCH)/windows && cmake -DCMAKE_TOOLCHAIN_FILE=../../../../windows-toolchain.cmake ../../.. && make
+	cd build/$(ARCH)/windows && x86_64-w64-mingw32-cmake -DCMAKE_TOOLCHAIN_FILE=../../../../windows-toolchain.cmake ../../.. && make
 	rm -rf ../target/$(ARCH)/windows || true
 	mkdir -p ../target/$(ARCH)/windows
 	mv build/$(ARCH)/windows/src/AmiusAdventurePC.exe ../target/$(ARCH)/windows/AmiusAdventurePC.exe

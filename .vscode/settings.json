@@ -8,6 +8,8 @@
         "./n3ds_platform/build",
         "./n3ds_platform/fastgltf/include",
         "./n3ds_sprite_maker/build/src/.qt/16a2c8",
+        "./SDL/include",
+        "./SDL_mixer/include",
         "/usr/include/qt6",
         "/opt/devkitpro/portlibs/3ds/include",
         "/opt/devkitpro/portlibs/3ds/include/opus"

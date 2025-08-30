@@ -9,10 +9,11 @@ add_compile_definitions("DEBUG=$<CONFIG:Debug>")
 
 add_subdirectory(../amius_adventure amius_adventure_engine)
 
+add_subdirectory(../SDL EXCLUDE_FROM_ALL sdl)
+add_subdirectory(../SDL_mixer EXCLUDE_FROM_ALL sdl_mixer)
+
 include_directories(${PROJECT_SOURCE_DIR}/../include)
 
-
-find_package(SDL3 REQUIRED)
 if (APPLE) 
     find_package(Vulkan REQUIRED COMPONENTS MoltenVK)
 else()

@@ -12,3 +12,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 find_path(MINGW_INCLUDE_DIR windows.h
     PATHS /usr/x86_64-w64-mingw32/include
     NO_DEFAULT_PATH)
+
+set(CMAKE_IGNORE_PATH "/usr/include;/usr/local/include")
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_WIN32 -D_WIN64")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_WIN32 -D_WIN64")

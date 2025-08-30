@@ -36,7 +36,8 @@ public:
 
 enum SupportedFormats {
     DETECT_FORMAT,
-    OPUS_FORMAT
+    OPUS_FORMAT,
+    VORBIS_FORMAT
 };
 
 enum AudioFormats {

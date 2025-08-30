@@ -3,14 +3,30 @@
 #include <iostream>
 #include "n3dslink.hpp"
 #include "render.hpp"
+#include "error.hpp"
 
 u32 oldTimeLimit = UINT32_MAX;
+u32 mainId = UINT32_MAX;
+bool doPanic = false;
 
 void unlockCore1() {
+    svcGetThreadId(&mainId, CUR_THREAD_HANDLE);
     APT_GetAppCpuTimeLimit(&oldTimeLimit);
-    APT_SetAppCpuTimeLimit(30);
+    APT_SetAppCpuTimeLimit(50);
 }
 
+void checkPanic() {
+    if (doPanic) {
+        softPanic(getErr());
+    }
+}
+
+void threadCheckPanic() {
+    if (doPanic) {
+        threadExit(0);
+    }
+}
+ 
 void exitGame() {
     romfsExit();
     exit3dslink();
@@ -23,6 +39,16 @@ void exitGame() {
 }
 
 void softPanic(std::string reason) {
+    doPanic = true;
+    if (mainId != UINT32_MAX) {
+        u32 id;
+        svcGetThreadId(&id, CUR_THREAD_HANDLE);
+        if (id != mainId) {
+            setErr(reason);
+            threadExit(0);
+        }
+    }
+
     gfxInitDefault();
     consoleSelect(consoleInit(GFX_TOP, NULL));
 

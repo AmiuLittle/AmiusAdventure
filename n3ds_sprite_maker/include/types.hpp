@@ -11,5 +11,9 @@ struct AlstHeader {
     uint8_t version;
 };
 
+namespace Version1 {
+    
+}
+
 #define N3DS_SPRTIE_MAKER_TYPES
 #endif

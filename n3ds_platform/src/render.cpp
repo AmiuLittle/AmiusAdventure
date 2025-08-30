@@ -4,6 +4,7 @@
 #include <citro3d.h>
 #include <map>
 #include <iostream>
+#include <glm/gtc/type_ptr.hpp>
 #include "exitfuncs.hpp"
 #include "error.hpp"
 #include "file.hpp"
@@ -54,10 +55,16 @@ static const C3D_Material lightMaterial =
     { 0.0f, 0.0f, 0.0f }, //emission
 };
 
-C3D_Mtx mat4x4_to_C3D_Mtx(mat4x4* mat) {
+C3D_Mtx mat4x4_to_C3D_Mtx(glm::mat4x4* mat) {
     C3D_Mtx mtx;
-    memcpy(mtx.m, mat, sizeof(mat4x4));
+    memcpy(&mtx.r, glm::value_ptr(glm::transpose(*mat)), sizeof(glm::mat4x4));
     return mtx;
+}
+
+glm::mat4x4 C3D_Mtx_to_mat4x4(C3D_Mtx* mtx) {
+    glm::mat4x4 mat;
+    memcpy(glm::value_ptr(mat), &mtx->r, sizeof(C3D_Mtx));
+    return glm::transpose(mat);
 }
 
 static void sceneBind(void)
@@ -271,7 +278,7 @@ bool drawModel(std::string model, std::string texture, C3D_Mtx modelView) {
     return true;
 }
 
-void draw3dSprite(std::string texture, vec3 position, vec3 scale, AmiusAdventure::Scene::SpriteData* spriteData, u32 animationTimer, C3D_Mtx modelView) {
+void draw3dSprite(std::string texture, glm::vec3 position, glm::vec3 scale, AmiusAdventure::Scene::SpriteData* spriteData, u32 animationTimer, C3D_Mtx modelView) {
     if (texture.compare("none") != 0) {
         if(!loadTex(texture)) {
             softPanic(getErr());
@@ -283,7 +290,7 @@ void draw3dSprite(std::string texture, vec3 position, vec3 scale, AmiusAdventure
     Mtx_Multiply(&adjustedView, &spriteCameraView, &modelView);
 }
 
-void drawText(std::string text, vec3 position, vec2 scale, u32 color, AmiusAdventure::Scene::UI::TextAlign align, float width, bool topScreen) {
+void drawText(std::string text, glm::vec3 position, glm::vec2 scale, u32 color, AmiusAdventure::Scene::UI::TextAlign align, float width, bool topScreen) {
     C2D_Text c2dText;
     C2D_TextParse(&c2dText, textBuf, text.c_str());
     c2dText.width = width * GSP_SCREEN_WIDTH;
@@ -299,7 +306,7 @@ void gfxUpdateTop(AmiusAdventure::Scene::Scene* scene, float iod) {
     Mtx_PerspStereoTilt(&projection, scene->ctx.camera->fovY, scene->ctx.camera->aspect, scene->ctx.camera->zNear, scene->ctx.camera->zFar, iod, 2.0f, false);
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
 
-    cameraView = scene->ctx.camera->getTransform();
+    cameraView = mat4x4_to_C3D_Mtx(scene->ctx.camera->getTransform());
     Mtx_Inverse(&cameraView);
 
     Mtx_Copy(&spriteCameraView, &cameraView);
@@ -315,10 +322,10 @@ void gfxUpdateTop(AmiusAdventure::Scene::Scene* scene, float iod) {
             AmiusAdventure::Scene::Object* object = &(*scene->objects[i]);
             switch (object->data.type) {
             case AmiusAdventure::Scene::RENDER_CUBE:
-                drawCube(object->data.texture, object->getTransform());
+                drawCube(object->data.texture, mat4x4_to_C3D_Mtx(object->getTransform()));
                 break;
             case AmiusAdventure::Scene::RENDER_MODEL:
-                drawModel(object->data.model, object->data.texture, object->getTransform());
+                drawModel(object->data.model, object->data.texture, mat4x4_to_C3D_Mtx(object->getTransform()));
                 break;
             default:
                 break;

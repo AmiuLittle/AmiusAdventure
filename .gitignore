@@ -37,8 +37,12 @@
 *.map
 
 # Build Directories
-*/build
+*/build/
+build/
 n3ds_platform/romfs/gfx
 
 # I don't wanna get sued by nintendo
 n3ds_platform/gfx/mario
+
+# Proton stuff
+GLCache/

@@ -4,8 +4,8 @@
 #include <string>
 #include <array>
 #include <channel.hpp>
-#include "linmath.h"
-#include <c3d/types.h>
+#include <glm/glm.hpp>
+#include "audio_interface.hpp"
 
 typedef uint32_t u32;
 
@@ -13,7 +13,7 @@ namespace AmiusAdventure {
 
     namespace Math {
         struct Plane {
-            vec3 normal = {0.0f, 1.0f, 0.0f};
+            glm::vec3 normal = {0.0f, 1.0f, 0.0f};
             float distance = 0.0f;
         };
 
@@ -70,7 +70,7 @@ namespace AmiusAdventure {
         struct SceneCtx;
 
         struct SpriteData {
-            vec2 spriteDimension; // The dimension of each individual sprite on the spritesheet
+            glm::vec2 spriteDimension; // The dimension of each individual sprite on the spritesheet
             u32 currentAnimation; // used to specify which row of sprites to use
             u32 animationStart; // The value of the animation timer when the animation started
             u32 animationTime; // how many frames are in an animation if time > perRow then the next row will be used in the animation
@@ -94,7 +94,7 @@ namespace AmiusAdventure {
             struct UIRenderData {
                 UIRenderType type;
                 std::string text;
-                vec2 dimension;
+                glm::vec2 dimension;
                 u32 basecolor;
                 TextAlign align;
             };
@@ -104,14 +104,14 @@ namespace AmiusAdventure {
                 UIHandle* handle = nullptr;
             public:
                 UIRenderData data;
-                vec3 position; // z position is used for stereoscopic 3d on the 3DS
+                glm::vec3 position; // z position is used for stereoscopic 3d on the 3DS
                 float_t rotation;
-                vec2 scale;
+                glm::vec2 scale;
                 bool flip_vertical;
                 bool flip_horizontal;
                 void (*tick)(UIObject*, SceneCtx*, Input::InputState*);
                 UIObject();
-                UIObject(UIRenderData, vec3, float_t, vec2, bool, bool, void (*tick)(UIObject*, SceneCtx*, Input::InputState*));
+                UIObject(UIRenderData, glm::vec3, float_t, glm::vec2, bool, bool, void (*tick)(UIObject*, SceneCtx*, Input::InputState*));
                 ~UIObject();
                 UIHandle* getHandle();
             };
@@ -133,29 +133,29 @@ namespace AmiusAdventure {
             RenderType type;
             std::string model;
             std::string texture; // normally a path to a t3x file, will be treated as a path to an .alst file if RenderType is set to RENDER_3DSPRITE
-            vec3 dimension;
+            glm::vec3 dimension;
             std::optional<SpriteData> spriteData;
         };
 
         class Object {
         private:
             Handle* handle = nullptr;
-            C3D_Mtx transform;
+            glm::mat4x4 transform;
         public:
             RenderData data;
-            vec3 position;
-            vec3 rotation;
-            vec3 scale;
+            glm::vec3 position;
+            glm::vec3 rotation;
+            glm::vec3 scale;
             bool isDirty;
             void (*tick)(Object*, SceneCtx*, Input::InputState*);
             Object();
-            Object(RenderData, vec3, vec3, vec3, void(*tick)(Object*, SceneCtx*, Input::InputState*));
+            Object(RenderData, glm::vec3, glm::vec3, glm::vec3, void(*tick)(Object*, SceneCtx*, Input::InputState*));
             ~Object();
             Handle* getHandle();
-            void setPosition(vec3);
-            void setRotation(quat);
-            void setScale(vec3);
-            C3D_Mtx getTransform();
+            void setPosition(glm::vec3);
+            void setRotation(glm::vec3);
+            void setScale(glm::vec3);
+            glm::mat4x4* getTransform();
             bool isVisible(Math::Frustum*);
         };
 
@@ -167,20 +167,20 @@ namespace AmiusAdventure {
 
         class Camera {
         private:
-            C3D_Mtx transform;
+            glm::mat4x4 transform;
             Math::Frustum frustum;
         public:
-            vec3 position;
-            vec3 rotation;
+            glm::vec3 position;
+            glm::vec3 rotation;
             float zNear;
             float zFar;
             float fovY;
             float aspect;
             bool isDirty;
             void(*tick)(Camera*, SceneCtx*, Input::InputState*);
-            Camera(vec3, vec3, float, float, float, float, void(*)(Camera*, SceneCtx*, Input::InputState*));
-            void LookAt(vec3 target);
-            C3D_Mtx getTransform();
+            Camera(glm::vec3, glm::vec3, float, float, float, float, void(*)(Camera*, SceneCtx*, Input::InputState*));
+            void LookAt(glm::vec3 target);
+            glm::mat4x4* getTransform();
             Math::Frustum generateFrustum();
         };
 
@@ -189,6 +189,8 @@ namespace AmiusAdventure {
             std::chrono::steady_clock::time_point tickStart;
             Camera* camera;
             u32 animationTimer; // ticks once every ms
+            AudioInterface* audio;
+            void(*softPanic)(std::string);
         };
 
         class Scene {
@@ -196,7 +198,7 @@ namespace AmiusAdventure {
             std::array<std::optional<Object>, 256> objects;
             std::array<std::optional<UI::UIObject>, 256> uiObjects;
             SceneCtx ctx;
-            Scene(Camera*);
+            Scene(Camera*, AudioInterface*);
             ~Scene();
             void tick(Input::InputState*);
         };

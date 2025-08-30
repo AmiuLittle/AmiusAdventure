@@ -11,6 +11,7 @@
 #include "exitfuncs.hpp"
 #include "render.hpp"
 #include "error.hpp"
+#include "audio.hpp"
 
 int main() {
     cfguInit();
@@ -30,11 +31,13 @@ int main() {
     }
     atexit([](){romfsExit();});
 
-    AmiusAdventure::Scene::Camera* topCamera = new AmiusAdventure::Scene::Camera(vec3{0, 0, 0}, vec3{0, 0, 0}, 0.01f, 1000.0f, (float)C3D_AngleFromDegrees(40.0f), C3D_AspectRatioTop, nullptr);
-    AmiusAdventure::Scene::Camera* bottomCamera = new AmiusAdventure::Scene::Camera(vec3{0, 0, 0}, vec3{0, 0, 0}, 0.01f, 1000.0f, (float)C3D_AngleFromDegrees(40.0f), C3D_AspectRatioBot, nullptr);
+    AudioEngine* audioEngine = new AudioEngine();
 
-    AmiusAdventure::Scene::Scene* topScene = new AmiusAdventure::Scene::Scene(topCamera);
-    AmiusAdventure::Scene::Scene* bottomScene = new AmiusAdventure::Scene::Scene(bottomCamera);
+    AmiusAdventure::Scene::Camera* topCamera = new AmiusAdventure::Scene::Camera(glm::vec3{0, 0, 0}, glm::vec3{0, 0, 0}, 0.01f, 1000.0f, (float)C3D_AngleFromDegrees(40.0f), C3D_AspectRatioTop, nullptr);
+    AmiusAdventure::Scene::Camera* bottomCamera = new AmiusAdventure::Scene::Camera(glm::vec3{0, 0, 0}, glm::vec3{0, 0, 0}, 0.01f, 1000.0f, (float)C3D_AngleFromDegrees(40.0f), C3D_AspectRatioBot, nullptr);
+
+    AmiusAdventure::Scene::Scene* topScene = new AmiusAdventure::Scene::Scene(topCamera, audioEngine);
+    AmiusAdventure::Scene::Scene* bottomScene = new AmiusAdventure::Scene::Scene(bottomCamera, audioEngine);
 
     AmiusAdventure::Engine* engine = new AmiusAdventure::Engine("3DS", softPanic, topScene, bottomScene);
 
@@ -55,6 +58,8 @@ int main() {
 
         gfxUpdate(topScene, bottomScene, iod / 12);
 
+        checkPanic();
+
         gspWaitForVBlank();
     }
 
@@ -63,6 +68,7 @@ int main() {
     delete engine;
     delete bottomScene;
     delete topScene;
+    delete audioEngine;
 
     return 0;
 }

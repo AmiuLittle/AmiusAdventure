@@ -1,34 +1,33 @@
 #include "amius_adventure.hpp"
-#include <c3d/maths.h>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 using namespace AmiusAdventure::Scene;
 
-Camera::Camera(vec3 position, vec3 rotation, float zNear, float zFar, float fovY, float aspect, void(*tick)(Camera*, SceneCtx*, Input::InputState*)) : position{position[0], position[1], position[2]}, rotation{rotation[0], rotation[1], rotation[2]}, zNear(zNear), zFar(zFar), fovY(fovY), aspect(aspect), isDirty(true), tick(tick) {}
+Camera::Camera(glm::vec3 position, glm::vec3 rotation, float zNear, float zFar, float fovY, float aspect, void(*tick)(Camera*, SceneCtx*, Input::InputState*)) : position{position.x, position.y, position.z}, rotation{rotation.x, rotation.y, rotation.z}, zNear(zNear), zFar(zFar), fovY(fovY), aspect(aspect), isDirty(true), tick(tick) {}
 
-C3D_Mtx Camera::getTransform() {
+glm::mat4x4* Camera::getTransform() {
     if (this->isDirty) {
-        Mtx_Identity(&this->transform);
-        Mtx_RotateX(&this->transform, this->rotation[0], false);
-        Mtx_RotateY(&this->transform, this->rotation[1], false);
-        Mtx_RotateZ(&this->transform, this->rotation[2], false);
-        Mtx_Translate(&this->transform, this->position[0], this->position[1], this->position[2], false);
+        this->transform = glm::mat4x4(1.0f);
+        this->transform = this->transform * glm::mat4_cast(glm::quat(this->rotation));
+        this->transform = glm::translate(this->transform, this->position);
         this->isDirty = false;
     }
-    return this->transform;
+    return &this->transform;
 }
 
-void getCameraFront(vec3 pos, vec3 rotation, vec3* out) {
-    vec3 forward;
-    forward[0] = -cos(rotation[0]) * sin(rotation[1]);
-    forward[1] = -sin(rotation[0]);
-    forward[2] = cos(rotation[0]) * cos(rotation[1]);
+void getCameraFront(glm::vec3 pos, glm::vec3 rotation, glm::vec3* out) {
+    glm::vec3 forward;
+    forward.x = -cos(rotation.x) * sin(rotation.y);
+    forward.y = -sin(rotation.x);
+    forward.z = cos(rotation.x) * cos(rotation.y);
 
 
     // Normalize the result
-    float length = sqrt(forward[0] * forward[0] + forward[1] * forward[1] + forward[2] * forward[2]);
-    *out[0] = forward[0] / length;
-    *out[1] = forward[1] / length;
-    *out[2] = forward[2] / length;
+    float length = sqrt(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
+    out->x = forward.x / length;
+    out->y = forward.y / length;
+    out->z = forward.z / length;
 }
 
 /// @brief CALL THIS FUNCTION BEFORE `Camera::getTransform()`, it uses the `Camera::isDirty` variable to decide to calculate a new frustum
@@ -37,22 +36,19 @@ AmiusAdventure::Math::Frustum Camera::generateFrustum() {
     if (this->isDirty) {
         const float halfVSide = zFar * tanf(fovY * .5f);
         const float halfHSide = halfVSide * aspect;
-        vec3 forward;
+        glm::vec3 forward;
         getCameraFront(this->position, this->rotation, &forward);
-        vec3 frontMultFar;
-        vec3_scale(frontMultFar, forward, zFar);
-        vec3 frontMultNear;
-        vec3_scale(frontMultNear, forward, zNear);
+        glm::vec3 frontMultFar = forward * zFar;
+        glm::vec3 frontMultNear = forward * zNear;
 
-        vec3 result;
-        vec3_add(result, frontMultNear, this->position);
+        glm::vec3 result = frontMultNear + this->position;
         this->frustum.nearFace = {
-            {result[0], result[1], result[2]},
+            {result.x, result.y, result.z},
             zNear
         };
-        vec3_add(result, frontMultFar, this->position);
+        glm::vec3 result2 = frontMultFar + this->position;
         this->frustum.farFace = {
-            {result[0], result[1], result[2]},
+            {result2.x, result2.y, result2.z},
             zFar
         };
     }

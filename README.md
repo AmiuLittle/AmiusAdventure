@@ -12,6 +12,7 @@ If you want to see the game ported to another platform, feel free to make a feat
 
 ## Building
 ### Requirements
+#### 3DS
 - GNU Make
 - DevkitPro 3DS Packages
     - devkitARM
@@ -21,6 +22,11 @@ If you want to see the game ported to another platform, feel free to make a feat
     - 3ds-pkg-config
     - 3ds-libvorbisidec
     - 3ds-opusfile
+
+#### PC
+- GNU Make
+- CMake
+- SDL3 
 
 ### Building
 

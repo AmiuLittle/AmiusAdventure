@@ -12,6 +12,7 @@
 #include "render.hpp"
 #include "error.hpp"
 #include "audio.hpp"
+#include "assetProvider.hpp"
 
 int main() {
     cfguInit();
@@ -39,7 +40,8 @@ int main() {
     AmiusAdventure::Scene::Scene* topScene = new AmiusAdventure::Scene::Scene(topCamera, audioEngine);
     AmiusAdventure::Scene::Scene* bottomScene = new AmiusAdventure::Scene::Scene(bottomCamera, audioEngine);
 
-    AmiusAdventure::Engine* engine = new AmiusAdventure::Engine("3DS", softPanic, topScene, bottomScene);
+    AssetProvider* assetProvider = new AssetProvider();
+    AmiusAdventure::Engine* engine = new AmiusAdventure::Engine("3DS", softPanic, topScene, bottomScene, assetProvider);
 
     while (aptMainLoop()) {
         hidScanInput();

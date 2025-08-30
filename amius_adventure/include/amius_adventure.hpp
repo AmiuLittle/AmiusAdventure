@@ -6,6 +6,7 @@
 #include <channel.hpp>
 #include <glm/glm.hpp>
 #include "audio_interface.hpp"
+#include "asset_provider_interface.hpp"
 
 typedef uint32_t u32;
 
@@ -191,6 +192,7 @@ namespace AmiusAdventure {
             u32 animationTimer; // ticks once every ms
             AudioInterface* audio;
             void(*softPanic)(std::string);
+            AssetProviderInterface* assetProvider;
         };
 
         class Scene {
@@ -225,11 +227,12 @@ namespace AmiusAdventure {
     private:
         std::string platform;
         void(*softPanic)(std::string);
+        AssetProviderInterface* assetProvider;
     public:
         /// @brief Runs init 
         /// @param platform a string representing the platform the game is running on
         /// @param softPanic this will be called if the program cannot continue but can safely exit without causing a full panic
-        Engine(std::string platform, void(*softPanic)(std::string), Scene::Scene* topScene, Scene::Scene* bottomScene);
+        Engine(std::string platform, void(*softPanic)(std::string), Scene::Scene* topScene, Scene::Scene* bottomScene, AssetProviderInterface* assetProvider);
         /// @brief one tick of app logic, should be called on a loop, returns true if app should exit
         /// @param inputState the current input state of the system
         /// @return bool

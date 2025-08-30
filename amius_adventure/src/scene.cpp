@@ -14,7 +14,8 @@ Scene::Scene(Camera* camera, AudioInterface* audio) {
 		.camera = camera,
         .animationTimer = 0,
         .audio = audio,
-        .softPanic = nullptr
+        .softPanic = nullptr,
+        .assetProvider = nullptr
     };
 }
 

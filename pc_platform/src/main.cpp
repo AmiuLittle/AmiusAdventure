@@ -7,6 +7,7 @@
 #include "quikmath.hpp"
 #include "error.hpp"
 #include "render.hpp"
+#include "assetProvider.hpp"
 
 SDL_Window* mainWindow = nullptr;
 
@@ -57,7 +58,8 @@ int main(int argc, char** argv) {
     AmiusAdventure::Scene::Scene* topScene = new AmiusAdventure::Scene::Scene(topCamera, nullptr);
     AmiusAdventure::Scene::Scene* bottomScene = new AmiusAdventure::Scene::Scene(bottomCamera, nullptr);
     
-    AmiusAdventure::Engine* engine = new AmiusAdventure::Engine("PC", exitWithErrorWindow, topScene, bottomScene);
+    AssetProvider* assetProvider = new AssetProvider();
+    AmiusAdventure::Engine* engine = new AmiusAdventure::Engine("PC", exitWithErrorWindow, topScene, bottomScene, assetProvider);
     
     bool running = true;
     bool useSecondScene = false;

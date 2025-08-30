@@ -104,6 +104,8 @@ std::vector<VkFramebuffer> swapChainFramebuffers;
 
 VmaAllocator allocator;
 
+VkBuffer stagingBuffer;
+VmaAllocation stagingAllocation;
 VkBuffer vertexBuffer;
 VmaAllocation vertexAllocation;
 
@@ -370,6 +372,68 @@ uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
 
     exitWithErrorWindow("Unable to find a memory type");
     return UINT32_MAX;
+}
+
+bool copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size) {
+    VkCommandPool tempCommandPool;
+    VkCommandBuffer tempCommandBuffer;
+    VkCommandPoolCreateInfo commandPoolInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = deviceQueueFamilyIndices.graphicsFamily.value()
+    };
+    if (vkCreateCommandPool(device, &commandPoolInfo, nullptr, &tempCommandPool) != VK_SUCCESS) {
+        setErr("Failed to create command pool");
+        return false;
+    }
+
+    VkCommandBufferAllocateInfo commandBufferAllocInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext = nullptr,
+        .commandPool = tempCommandPool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1
+    };
+    if (vkAllocateCommandBuffers(device, &commandBufferAllocInfo, &tempCommandBuffer) != VK_SUCCESS) {
+        setErr("Failed to allocate command buffer");
+        return false;
+    }
+
+    VkCommandBufferBeginInfo beginInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+    };
+
+    if (vkBeginCommandBuffer(tempCommandBuffer, &beginInfo) != VK_SUCCESS) {
+        setErr("Failed to begin command buffer");
+        return false;
+    }
+
+    VkBufferCopy copy = {
+        .srcOffset = 0,
+        .dstOffset = 0,
+        .size = size
+    };
+    vkCmdCopyBuffer(tempCommandBuffer, src, dst, 1, &copy);
+
+    if (vkEndCommandBuffer(tempCommandBuffer) != VK_SUCCESS) {
+        setErr("Failed to end command buffer");
+    }
+
+    VkSubmitInfo submitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &tempCommandBuffer
+    };
+    vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(graphicsQueue);
+
+    vkFreeCommandBuffers(device, tempCommandPool, 1, &tempCommandBuffer);
+    vkDestroyCommandPool(device, tempCommandPool, nullptr);
+
+
+    return true;
 }
 
 bool initGfx(SDL_Window* win) {
@@ -847,28 +911,49 @@ bool initGfx(SDL_Window* win) {
         return false;
     }
 
-    // VERTEX BUFFER CREATION
-    VkBufferCreateInfo bufferInfo {
+    // BUFFER CREATION
+    // Staging
+    VkBufferCreateInfo stagingBufferInfo {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
         .size = sizeof(triangleVerticies[0]) * triangleVerticies.size(),
-        .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
-    VmaAllocationCreateInfo vertexAllocInfo {
+    VmaAllocationCreateInfo stagingAllocInfo {
         .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
         .usage = VMA_MEMORY_USAGE_AUTO,
         .requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
     };
-    if (vmaCreateBuffer(allocator, &bufferInfo, &vertexAllocInfo, &vertexBuffer, &vertexAllocation, nullptr)) {
+    if (vmaCreateBuffer(allocator, &stagingBufferInfo, &stagingAllocInfo, &stagingBuffer, &stagingAllocation, nullptr)) {
+        setErr("Failed to allocate staging buffer memory");
+        return false;
+    }
+    // TODO: Get rid of this when dynamically managing the vertex buffer! OLD!
+    vmaCopyMemoryToAllocation(allocator, triangleVerticies.data(), stagingAllocation, 0, (size_t)stagingBufferInfo.size);
+
+    // Vertex
+    VkBufferCreateInfo vertexBufferInfo {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .size = sizeof(triangleVerticies[0]) * triangleVerticies.size(),
+        .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
+    VmaAllocationCreateInfo vertexAllocInfo {
+        .flags = 0,
+        .usage = VMA_MEMORY_USAGE_AUTO,
+        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    };
+    if (vmaCreateBuffer(allocator, &vertexBufferInfo, &vertexAllocInfo, &vertexBuffer, &vertexAllocation, nullptr)) {
         setErr("Failed to allocate vertex buffer memory");
         return false;
     }
-    
-    // TODO: Get rid of this when dynamically managing the vertex buffer! OLD!
-    vmaCopyMemoryToAllocation(allocator, triangleVerticies.data(), vertexAllocation, 0, (size_t)bufferInfo.size);
 
+    // TODO: Get rid of this when dynamically managing vertex buffer! OLD!
+    copyBuffer(stagingBuffer, vertexBuffer, (VkDeviceSize)stagingBufferInfo.size);
 
     // COMMAND POOL CREATION
     VkCommandPoolCreateInfo commandPoolInfo = {
@@ -1055,6 +1140,7 @@ void gfxQuit() {
     }
     vkFreeCommandBuffers(device, commandPool, 1, commandBuffers.data());
     vkDestroyCommandPool(device, commandPool, nullptr);
+    vmaDestroyBuffer(allocator, stagingBuffer, stagingAllocation);
     vmaDestroyBuffer(allocator, vertexBuffer, vertexAllocation);
     vmaDestroyAllocator(allocator);
     cleanupSwapChain();

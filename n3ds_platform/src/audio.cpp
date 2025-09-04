@@ -25,7 +25,7 @@ struct _SoundEffect {
 } SoundEffect;
 
 struct _BackgroundMusic {
-    constexpr static int bufSize = 8 * 1024; //temp value
+    constexpr static int bufSize = 8 * 1024;
     constexpr static int channel = SoundEffect.channels;
     constexpr static int numBufs = 3;
     ndspWaveBuf buf[numBufs] = {0};

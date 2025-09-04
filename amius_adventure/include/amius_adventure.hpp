@@ -156,7 +156,7 @@ namespace AmiusAdventure {
             void setPosition(glm::vec3);
             void setRotation(glm::vec3);
             void setScale(glm::vec3);
-            glm::mat4x4* getTransform();
+            glm::mat4x4 getTransform();
             bool isVisible(Math::Frustum*);
         };
 
@@ -181,7 +181,7 @@ namespace AmiusAdventure {
             void(*tick)(Camera*, SceneCtx*, Input::InputState*);
             Camera(glm::vec3, glm::vec3, float, float, float, float, void(*)(Camera*, SceneCtx*, Input::InputState*));
             void LookAt(glm::vec3 target);
-            glm::mat4x4* getTransform();
+            glm::mat4x4 getTransform();
             Math::Frustum generateFrustum();
         };
 

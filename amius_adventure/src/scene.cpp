@@ -87,15 +87,17 @@ void Object::setScale(glm::vec3 scale) {
     this->isDirty = true;
 }
 
-glm::mat4x4* Object::getTransform() {
+glm::mat4x4 Object::getTransform() {
     if (this->isDirty) {
         this->transform = glm::mat4x4(1.0f);
-        this->transform = glm::scale(this->transform, this->scale);
-        this->transform = this->transform * glm::mat4_cast(glm::quat(this->rotation));
         this->transform = glm::translate(this->transform, this->position);
+        this->transform = glm::rotate(this->transform, this->rotation.x, glm::vec3(1.0, 0.0, 0.0));
+        this->transform = glm::rotate(this->transform, this->rotation.y, glm::vec3(0.0, 1.0, 0.0));
+        this->transform = glm::rotate(this->transform, this->rotation.z, glm::vec3(0.0, 0.0, 1.0));
+        this->transform = glm::scale(this->transform, this->scale);
         this->isDirty = false;
     }
-    return &this->transform;
+    return this->transform;
 }
 
 bool Object::isVisible(Math::Frustum* frustum) {

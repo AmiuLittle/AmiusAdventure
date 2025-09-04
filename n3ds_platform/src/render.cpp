@@ -11,6 +11,7 @@
 #include "vshader_shbin.h"
 #include "shapes.hpp"
 #include "gltfloader.hpp"
+#include "quikmath.hpp"
 
 #define DISPLAY_TRANSFER_FLAGS \
 	(GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) | \
@@ -53,17 +54,17 @@ static const C3D_Material lightMaterial =
     { 0.0f, 0.0f, 0.0f }, //emission
 };
 
-// GLM is column-major but C3D is row-major (at least I think, when I eliminate the glm::transpose call I don't see anything on screen)
+// GLM is column-major but C3D is row-major and has its rows reversed
 C3D_Mtx mat4x4_to_C3D_Mtx(const glm::mat4x4& mat) {
     C3D_Mtx mtx;
-    memcpy(mtx.m, glm::value_ptr(glm::transpose(mat)), sizeof(glm::mat4x4));
+    memcpy(mtx.m, glm::value_ptr(glm::transpose(reverseRows(mat))), sizeof(glm::mat4x4));
     return mtx;
 }
 
 glm::mat4x4 C3D_Mtx_to_mat4x4(const C3D_Mtx& mtx) {
     glm::mat4x4 mat;
-    memcpy(glm::value_ptr(mat), mtx.r, sizeof(C3D_Mtx));
-    return glm::transpose(mat);
+    memcpy(glm::value_ptr(mat), mtx.m, sizeof(C3D_Mtx));
+    return reverseRows(glm::transpose(mat));
 }
 
 static void sceneBind(void)
@@ -302,7 +303,7 @@ void gfxUpdateTop(AmiusAdventure::Scene::Scene* scene, float iod) {
     //glm::mat4x4 projection = glm::perspective(scene->ctx.camera->fovY, scene->ctx.camera->aspect, scene->ctx.camera->zNear, scene->ctx.camera->zFar);
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
 
-    cameraView = mat4x4_to_C3D_Mtx(*scene->ctx.camera->getTransform());
+    cameraView = mat4x4_to_C3D_Mtx(scene->ctx.camera->getTransform());
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_cameraView, &cameraView);
 
     C3D_FVec lightPos = FVec4_New(16.0f, 0.5f, 0.0f, 0.0f);
@@ -313,10 +314,10 @@ void gfxUpdateTop(AmiusAdventure::Scene::Scene* scene, float iod) {
             AmiusAdventure::Scene::Object* object = &(*scene->objects[i]);
             switch (object->data.type) {
             case AmiusAdventure::Scene::RENDER_CUBE:
-                drawCube(object->data.texture, mat4x4_to_C3D_Mtx(*object->getTransform()));
+                drawCube(object->data.texture, mat4x4_to_C3D_Mtx(object->getTransform()));
                 break;
             case AmiusAdventure::Scene::RENDER_MODEL:
-                drawModel(object->data.model, object->data.texture, mat4x4_to_C3D_Mtx(*object->getTransform()));
+                drawModel(object->data.model, object->data.texture, mat4x4_to_C3D_Mtx(object->getTransform()));
                 break;
             default:
                 break;

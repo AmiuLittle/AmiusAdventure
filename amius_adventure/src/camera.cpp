@@ -6,15 +6,17 @@ using namespace AmiusAdventure::Scene;
 
 Camera::Camera(glm::vec3 position, glm::vec3 rotation, float zNear, float zFar, float fovY, float aspect, void(*tick)(Camera*, SceneCtx*, Input::InputState*)) : position{position.x, position.y, position.z}, rotation{rotation.x, rotation.y, rotation.z}, zNear(zNear), zFar(zFar), fovY(fovY), aspect(aspect), isDirty(true), tick(tick) {}
 
-glm::mat4x4* Camera::getTransform() {
+glm::mat4x4 Camera::getTransform() {
     if (this->isDirty) {
         this->transform = glm::mat4x4(1.0f);
-        this->transform = this->transform * glm::mat4_cast(glm::quat(this->rotation));
         this->transform = glm::translate(this->transform, this->position);
+        this->transform = glm::rotate(this->transform, this->rotation.x, glm::vec3(1.0, 0.0, 0.0));
+        this->transform = glm::rotate(this->transform, this->rotation.y, glm::vec3(0.0, 1.0, 0.0));
+        this->transform = glm::rotate(this->transform, this->rotation.z, glm::vec3(0.0, 0.0, 1.0));
         this->transform = glm::inverse(this->transform);
         this->isDirty = false;
     }
-    return &this->transform;
+    return this->transform;
 }
 
 void getCameraFront(glm::vec3 pos, glm::vec3 rotation, glm::vec3* out) {

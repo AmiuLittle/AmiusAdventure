@@ -1,5 +1,7 @@
 3dsx:
 	cd n3ds_platform && make all
+3dsx_tests:
+	cd n3ds_platform/tests && make all
 
 cia:
 	cd n3ds_platform && make all

@@ -14,6 +14,7 @@
 #include "audio.hpp"
 #include "assetProvider.hpp"
 
+#ifndef TESTING_BUILD
 int main() {
     cfguInit();
     if (!initGfx()) {
@@ -74,3 +75,4 @@ int main() {
 
     return 0;
 }
+#endif

@@ -25,7 +25,7 @@ struct _SoundEffect {
 } SoundEffect;
 
 struct _BackgroundMusic {
-    constexpr static int bufSize = 16 * 1024;
+    constexpr static int bufSize = 8 * 1024; //temp value
     constexpr static int channel = SoundEffect.channels;
     constexpr static int numBufs = 3;
     ndspWaveBuf buf[numBufs] = {0};
@@ -75,7 +75,7 @@ bool setChannelFormat(int dspChn, AudioFormats format, int channels, AudioFormat
 }
 
 void n3ds_dsp_callback(void* userdata) {
-    AudioEngine* audio = static_cast<AudioEngine*>(userdata);
+    AudioEngine* _audio = static_cast<AudioEngine*>(userdata);
 
     if (BackgroundMusic.buf[fill_block].status == NDSP_WBUF_DONE) {
         BackgroundMusic.buf[fill_block].status = NDSP_WBUF_FREE;

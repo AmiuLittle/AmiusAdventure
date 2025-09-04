@@ -2,6 +2,7 @@
 #include <fstream>
 #include <tuple>
 #include <3ds.h>
+#include <c3d/maths.h>
 #include <stdlib.h>
 #include <iostream>
 #include "amius_adventure.hpp"
@@ -10,18 +11,19 @@
 #include "exitfuncs.hpp"
 #include "render.hpp"
 #include "error.hpp"
+#include "audio.hpp"
+#include "assetProvider.hpp"
 
+#ifndef TESTING_BUILD
 int main() {
     cfguInit();
     if (!initGfx()) {
         softPanic("could not init GFX: " + getErr());
     }
-    //consoleSelect(consoleInit(GFX_BOTTOM, NULL));
 
     if (!init3dslinkStdio()) {
         softPanic("could not init SOC");
     }
-    std::cout << "Sanity Check\n";
 
     unlockCore1(); // necessary for sound
 
@@ -31,10 +33,16 @@ int main() {
     }
     atexit([](){romfsExit();});
 
-    AmiusAdventure::Scene::Scene* topScene = new AmiusAdventure::Scene::Scene();
-    AmiusAdventure::Scene::Scene* bottomScene = new AmiusAdventure::Scene::Scene();
+    AudioEngine* audioEngine = new AudioEngine();
 
-    AmiusAdventure::Engine* engine = new AmiusAdventure::Engine("3DS", softPanic, topScene, bottomScene);
+    AmiusAdventure::Scene::Camera* topCamera = new AmiusAdventure::Scene::Camera(glm::vec3{0, 0, 0}, glm::vec3{0, 0, 0}, 0.01f, 1000.0f, (float)C3D_AngleFromDegrees(40.0f), C3D_AspectRatioTop, nullptr);
+    AmiusAdventure::Scene::Camera* bottomCamera = new AmiusAdventure::Scene::Camera(glm::vec3{0, 0, 0}, glm::vec3{0, 0, 0}, 0.01f, 1000.0f, (float)C3D_AngleFromDegrees(40.0f), C3D_AspectRatioBot, nullptr);
+
+    AmiusAdventure::Scene::Scene* topScene = new AmiusAdventure::Scene::Scene(topCamera, audioEngine);
+    AmiusAdventure::Scene::Scene* bottomScene = new AmiusAdventure::Scene::Scene(bottomCamera, audioEngine);
+
+    AssetProvider* assetProvider = new AssetProvider();
+    AmiusAdventure::Engine* engine = new AmiusAdventure::Engine("3DS", softPanic, topScene, bottomScene, assetProvider);
 
     while (aptMainLoop()) {
         hidScanInput();
@@ -53,6 +61,8 @@ int main() {
 
         gfxUpdate(topScene, bottomScene, iod / 12);
 
+        checkPanic();
+
         gspWaitForVBlank();
     }
 
@@ -61,6 +71,8 @@ int main() {
     delete engine;
     delete bottomScene;
     delete topScene;
+    delete audioEngine;
 
     return 0;
 }
+#endif

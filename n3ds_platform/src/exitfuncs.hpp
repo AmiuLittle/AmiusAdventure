@@ -3,6 +3,8 @@
 #include <string>
 
 void unlockCore1();
+void checkPanic();
+void threadCheckPanic();
 void exitGame();
 void softPanic(std::string reason);
 

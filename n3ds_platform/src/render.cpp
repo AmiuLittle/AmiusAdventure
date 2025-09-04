@@ -4,12 +4,14 @@
 #include <citro3d.h>
 #include <map>
 #include <iostream>
+#include <glm/gtc/type_ptr.hpp>
 #include "exitfuncs.hpp"
 #include "error.hpp"
 #include "file.hpp"
 #include "vshader_shbin.h"
 #include "shapes.hpp"
 #include "gltfloader.hpp"
+#include "quikmath.hpp"
 
 #define DISPLAY_TRANSFER_FLAGS \
 	(GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) | \
@@ -38,11 +40,8 @@ std::map<std::string, ModelData> loadedModels;
 
 static DVLB_s* vshader_dvlb;
 static shaderProgram_s shaderProgram;
-static int uLoc_projection, uLoc_modelView;
-static C3D_Mtx projection;
+static int uLoc_projection, uLoc_cameraView, uLoc_modelView;
 static C3D_AttrInfo vbo_attrInfo;
-static void* vbo_data;
-static C3D_BufInfo vbo_bufInfo;
 static C3D_LightEnv lightEnv;
 static C3D_Light light;
 static C3D_LightLut lut_Spec;
@@ -55,10 +54,17 @@ static const C3D_Material lightMaterial =
     { 0.0f, 0.0f, 0.0f }, //emission
 };
 
-C3D_Mtx mat4x4_to_C3D_Mtx(mat4x4* mat) {
+// GLM is column-major but C3D is row-major and has its rows reversed
+C3D_Mtx mat4x4_to_C3D_Mtx(const glm::mat4x4& mat) {
     C3D_Mtx mtx;
-    memcpy(mtx.m, mat, sizeof(mat4x4));
+    memcpy(mtx.m, glm::value_ptr(glm::transpose(reverseRows(mat))), sizeof(glm::mat4x4));
     return mtx;
+}
+
+glm::mat4x4 C3D_Mtx_to_mat4x4(const C3D_Mtx& mtx) {
+    glm::mat4x4 mat;
+    memcpy(glm::value_ptr(mat), mtx.m, sizeof(C3D_Mtx));
+    return reverseRows(glm::transpose(mat));
 }
 
 static void sceneBind(void)
@@ -131,18 +137,13 @@ bool initGfx() {
     shaderProgramSetVsh(&shaderProgram, &vshader_dvlb->DVLE[0]);
 
     uLoc_projection   = shaderInstanceGetUniformLocation(shaderProgram.vertexShader, "projection");
+    uLoc_cameraView   = shaderInstanceGetUniformLocation(shaderProgram.vertexShader, "cameraView");
 	uLoc_modelView    = shaderInstanceGetUniformLocation(shaderProgram.vertexShader, "modelView");
 
     AttrInfo_Init(&vbo_attrInfo);
     AttrInfo_AddLoader(&vbo_attrInfo, 0, GPU_FLOAT, 3);
     AttrInfo_AddLoader(&vbo_attrInfo, 1, GPU_FLOAT, 2);
     AttrInfo_AddLoader(&vbo_attrInfo, 2, GPU_FLOAT, 3);
-
-    vbo_data = linearAlloc(sizeof(CUBE));
-    memcpy(vbo_data, CUBE, sizeof(CUBE));
-
-    BufInfo_Init(&vbo_bufInfo);
-    BufInfo_Add(&vbo_bufInfo, vbo_data, sizeof(Vertex), 3, 0x210);
 
     C3D_LightEnvInit(&lightEnv);
     C3D_LightEnvMaterial(&lightEnv, &lightMaterial);
@@ -209,12 +210,30 @@ bool drawCube(std::string texture, C3D_Mtx modelView) {
         C3D_TexBind(0, &loadedTextures[texture].tex);
     }
 
-    C3D_Mtx adjustedView;
-    Mtx_Multiply(&adjustedView, &cameraView, &modelView);
+    if (loadedModels.find("cube") == loadedModels.end()) {
+        loadedModels.insert(std::pair("cube", ModelData {
+            .meshes = { Mesh { 
+                .primitives = { Primitive {
+                    .type = PRIMITIVE_VBO_ONLY,
+                    .vbo_data = nullptr,
+                    .vbo_count = cube_vertex_list_count,
+                    .idx_data = nullptr,
+                    .idx_count = 0,
+                    .idx_type = 0,
+                    .vbo_info = C3D_BufInfo {}
+                } }
+            } }
+        }));
+        Primitive* cube = &loadedModels["cube"].meshes.back().primitives.back();
+        cube->vbo_data = linearAlloc(sizeof(CUBE));
+        memcpy(cube->vbo_data, CUBE, sizeof(CUBE));
+        BufInfo_Init(&cube->vbo_info);
+        BufInfo_Add(&cube->vbo_info, cube->vbo_data, sizeof(Vertex), 3, 0x210);
+    }
 
-    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &adjustedView);
+    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &modelView);
 
-	C3D_SetBufInfo(&vbo_bufInfo);
+    C3D_SetBufInfo(&loadedModels["cube"].meshes.back().primitives.back().vbo_info);
     C3D_DrawArrays(GPU_TRIANGLES, 0, cube_vertex_list_count);
 
     return true;
@@ -236,10 +255,7 @@ bool drawModel(std::string model, std::string texture, C3D_Mtx modelView) {
         }
     }
 
-    C3D_Mtx adjustedView;
-    Mtx_Multiply(&adjustedView, &cameraView, &modelView);
-
-    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &adjustedView);
+    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &modelView);
 
     for (auto mesh = loadedModels[model].meshes.begin(); mesh != loadedModels[model].meshes.end(); ++mesh) {
         for (auto primitive = mesh->primitives.begin(); primitive != mesh->primitives.end(); ++primitive) {
@@ -257,7 +273,19 @@ bool drawModel(std::string model, std::string texture, C3D_Mtx modelView) {
     return true;
 }
 
-void drawText(std::string text, vec3 position, vec2 scale, u32 color, AmiusAdventure::Scene::UI::TextAlign align, float width, bool topScreen) {
+void draw3dSprite(std::string texture, glm::vec3 position, glm::vec3 scale, AmiusAdventure::Scene::SpriteData* spriteData, u32 animationTimer, C3D_Mtx modelView) {
+    /*if (texture.compare("none") != 0) {
+        if(!loadTex(texture)) {
+            softPanic(getErr());
+        }
+        C3D_TexBind(0, &loadedTextures[texture].tex);
+    }
+    
+    C3D_Mtx adjustedView;
+    Mtx_Multiply(&adjustedView, &spriteCameraView, &modelView);*/
+}
+
+void drawText(std::string text, glm::vec3 position, glm::vec2 scale, u32 color, AmiusAdventure::Scene::UI::TextAlign align, float width, bool topScreen) {
     C2D_Text c2dText;
     C2D_TextParse(&c2dText, textBuf, text.c_str());
     c2dText.width = width * GSP_SCREEN_WIDTH;
@@ -270,11 +298,13 @@ void gfxUpdateTop(AmiusAdventure::Scene::Scene* scene, float iod) {
     // top screen
     sceneBind();
 
-    Mtx_PerspStereoTilt(&projection, C3D_AngleFromDegrees(40), C3D_AspectRatioTop, 0.01f, 1000.0f, iod, 2.0f, false);
+    C3D_Mtx projection;
+    Mtx_PerspStereoTilt(&projection, scene->ctx.camera->fovY, scene->ctx.camera->aspect, scene->ctx.camera->zNear, scene->ctx.camera->zFar, iod, 2.0f, false);
+    //glm::mat4x4 projection = glm::perspective(scene->ctx.camera->fovY, scene->ctx.camera->aspect, scene->ctx.camera->zNear, scene->ctx.camera->zFar);
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
 
-    cameraView = scene->ctx.camera->getTransform();
-    Mtx_Inverse(&cameraView);
+    cameraView = mat4x4_to_C3D_Mtx(scene->ctx.camera->getTransform());
+    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_cameraView, &cameraView);
 
     C3D_FVec lightPos = FVec4_New(16.0f, 0.5f, 0.0f, 0.0f);
     C3D_LightPosition(&light, &lightPos);
@@ -284,10 +314,10 @@ void gfxUpdateTop(AmiusAdventure::Scene::Scene* scene, float iod) {
             AmiusAdventure::Scene::Object* object = &(*scene->objects[i]);
             switch (object->data.type) {
             case AmiusAdventure::Scene::RENDER_CUBE:
-                drawCube(object->data.texture, object->getTransform());
+                drawCube(object->data.texture, mat4x4_to_C3D_Mtx(object->getTransform()));
                 break;
             case AmiusAdventure::Scene::RENDER_MODEL:
-                drawModel(object->data.model, object->data.texture, object->getTransform());
+                drawModel(object->data.model, object->data.texture, mat4x4_to_C3D_Mtx(object->getTransform()));
                 break;
             default:
                 break;

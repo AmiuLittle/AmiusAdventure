@@ -1,11 +1,11 @@
 #!/bin/bash
 
-cpp_hpp_files=$(find . -type f \( -name "*.cpp" -o -name "*.hpp" \) \( -not -path "./include/*" -a -not -path "./simdjson/*" \))
+files_that_count=$(find . -type f \( -name "*.cpp" -o -name "*.hpp" -o -name "*.glsl.vert" -o -name "*.glsl.frag" -o -name "*.v.pica" \) \( -not -path "./include/*" -a -not -path "./simdjson/*" -a -not -path "./SDL/*" -a -not -path "./SDL_mixer/*" \))
 
 lines=0
 
 while IFS= read -r file; do
     lines=$(($(wc -l < "$file") + lines))
-done <<< "$cpp_hpp_files"
+done <<< "$files_that_count"
 
 echo $lines

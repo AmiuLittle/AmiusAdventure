@@ -6,7 +6,13 @@
         "./amius_adventure/include",
         "./include",
         "./n3ds_platform/build",
-        "./n3ds_platform/fastgltf/include"
+        "./n3ds_platform/fastgltf/include",
+        "./n3ds_sprite_maker/build/src/.qt/16a2c8",
+        "./SDL/include",
+        "./SDL_mixer/include",
+        "/usr/include/qt6",
+        "/opt/devkitpro/portlibs/3ds/include",
+        "/opt/devkitpro/portlibs/3ds/include/opus"
     ],
     "files.associations": {
         "iosfwd": "cpp",
@@ -95,10 +101,25 @@
         "csetjmp": "cpp",
         "csignal": "cpp",
         "*.ipp": "cpp",
-        "scope": "cpp"
+        "scope": "cpp",
+        "ranges": "cpp",
+        "barrier": "cpp",
+        "cuchar": "cpp",
+        "expected": "cpp",
+        "regex": "cpp",
+        "flat_map": "cpp",
+        "flat_set": "cpp",
+        "generator": "cpp",
+        "latch": "cpp",
+        "print": "cpp",
+        "scoped_allocator": "cpp",
+        "spanstream": "cpp",
+        "stacktrace": "cpp",
+        "syncstream": "cpp"
     },
     "C_Cpp.default.defines": [
         "__3DS__",
         "!__linux__"
-    ]
+    ],
+    "cmake.sourceDirectory": "/home/amu/Documents/GitHub/AmiusAdventure/n3ds_sprite_maker"
 }

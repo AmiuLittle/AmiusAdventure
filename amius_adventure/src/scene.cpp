@@ -1,16 +1,21 @@
 #include "amius_adventure.hpp"
-#include <c3d/maths.h>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include "cameraMove.hpp"
 
 using namespace AmiusAdventure::Scene;
 
-Scene::Scene() {
+Scene::Scene(Camera* camera, AudioInterface* audio) {
     std::fill(objects.begin(), objects.end(), std::nullopt);
     std::fill(uiObjects.begin(), uiObjects.end(), std::nullopt);
     this->ctx = SceneCtx {
         .deltaTime = std::chrono::milliseconds(),
         .tickStart = std::chrono::steady_clock::now(),
-		.camera = new Camera(vec3{0, 0, 0}, vec3{0, 0, 0}, moveCamera)
+		.camera = camera,
+        .animationTimer = 0,
+        .audio = audio,
+        .softPanic = nullptr,
+        .assetProvider = nullptr
     };
 }
 
@@ -31,7 +36,10 @@ void Scene::tick(Input::InputState* inputState) {
             (*this->uiObjects[i]).tick(&(*this->uiObjects[i]), &this->ctx, inputState);
         }
     }
-    this->ctx.camera->tick(this->ctx.camera, &this->ctx, inputState);
+    if (this->ctx.camera->tick != nullptr) {
+        this->ctx.camera->tick(this->ctx.camera, &this->ctx, inputState);
+    }
+    this->ctx.animationTimer += this->ctx.deltaTime.count();
 }
 
 Object::Object() : data(RenderData {
@@ -45,8 +53,8 @@ Object::~Object() {
     if (this->handle != nullptr) this->handle->valid = false;
 }
 
-Object::Object(RenderData data, vec3 position = vec3{0, 0, 0}, vec3 rotation = vec3{0, 0, 0}, vec3 scale = vec3{1, 1, 1}, void(*tick)(Object*, SceneCtx*, Input::InputState*) = nullptr) : 
-data(data), position{position[0], position[1], position[2]}, rotation{rotation[0], rotation[1], rotation[2]}, scale{scale[0], scale[1], scale[2]}, tick(tick) {}
+Object::Object(RenderData data, glm::vec3 position = glm::vec3{0, 0, 0}, glm::vec3 rotation = glm::vec3{0, 0, 0}, glm::vec3 scale = glm::vec3{1, 1, 1}, void(*tick)(Object*, SceneCtx*, Input::InputState*) = nullptr) : 
+data(data), position{position.x, position.y, position.z}, rotation{rotation.x, rotation.y, rotation.z}, scale{scale.x, scale.y, scale.z}, tick(tick) {}
 
 AmiusAdventure::Scene::Handle* Object::getHandle() {
     if (handle == nullptr) {
@@ -58,39 +66,42 @@ AmiusAdventure::Scene::Handle* Object::getHandle() {
     return handle;
 }
 
-void Object::setPosition(vec3 position) {
-    this->position[0] = position[0];
-    this->position[1] = position[1];
-    this->position[2] = position[2];
+void Object::setPosition(glm::vec3 position) {
+    this->position.x = position.x;
+    this->position.y = position.y;
+    this->position.z = position.z;
     this->isDirty = true;
 }
 
-void Object::setRotation(quat rotation) {
-    this->rotation[0] = rotation[0];
-    this->rotation[1] = rotation[1];
-    this->rotation[2] = rotation[2];
-    this->rotation[3] = rotation[3];
+void Object::setRotation(glm::vec3 rotation) {
+    this->rotation.r = rotation.x;
+    this->rotation.g = rotation.y;
+    this->rotation.b = rotation.z;
     this->isDirty = true;
 }
 
-void Object::setScale(vec3 scale) {
-    this->scale[0] = scale[0];
-    this->scale[1] = scale[1];
-    this->scale[2] = scale[2];
+void Object::setScale(glm::vec3 scale) {
+    this->scale.x = scale.x;
+    this->scale.y = scale.y;
+    this->scale.z = scale.z;
     this->isDirty = true;
 }
 
-C3D_Mtx Object::getTransform() {
+glm::mat4x4 Object::getTransform() {
     if (this->isDirty) {
-        Mtx_Identity(&this->transform);
-        Mtx_Scale(&this->transform, this->scale[0], this->scale[1], this->scale[2]);
-        Mtx_RotateX(&this->transform, this->rotation[0], false);
-        Mtx_RotateY(&this->transform, this->rotation[1], false);
-        Mtx_RotateZ(&this->transform, this->rotation[2], false);
-        Mtx_Translate(&this->transform, this->position[0], this->position[1], this->position[2], false);
+        this->transform = glm::mat4x4(1.0f);
+        this->transform = glm::translate(this->transform, this->position);
+        this->transform = glm::rotate(this->transform, this->rotation.x, glm::vec3(1.0, 0.0, 0.0));
+        this->transform = glm::rotate(this->transform, this->rotation.y, glm::vec3(0.0, 1.0, 0.0));
+        this->transform = glm::rotate(this->transform, this->rotation.z, glm::vec3(0.0, 0.0, 1.0));
+        this->transform = glm::scale(this->transform, this->scale);
         this->isDirty = false;
     }
     return this->transform;
+}
+
+bool Object::isVisible(Math::Frustum* frustum) {
+    return true;
 }
  
 UI::UIObject::UIObject() : data(UI::UIRenderData {
@@ -105,8 +116,8 @@ UI::UIObject::~UIObject() {
     if (this->handle != nullptr) this->handle->valid = false;
 }
 
-UI::UIObject::UIObject(UIRenderData data, vec3 position = vec3{0, 0, 0}, float_t rotation = 0, vec2 scale = vec2{1, 1}, bool flip_vertical = false, bool flip_horizontal = false, void (*tick)(UIObject*, SceneCtx*, Input::InputState*) = nullptr) : 
-data(data), position{position[0], position[1], position[2]}, rotation(rotation), scale{scale[0], scale[1]}, flip_vertical(flip_vertical), flip_horizontal(flip_horizontal), tick(tick) {}
+UI::UIObject::UIObject(UIRenderData data, glm::vec3 position = glm::vec3{0, 0, 0}, float_t rotation = 0, glm::vec2 scale = glm::vec2{1, 1}, bool flip_vertical = false, bool flip_horizontal = false, void (*tick)(UIObject*, SceneCtx*, Input::InputState*) = nullptr) : 
+data(data), position{position.x, position.y, position.z}, rotation(rotation), scale{scale.x, scale.y}, flip_vertical(flip_vertical), flip_horizontal(flip_horizontal), tick(tick) {}
 
 UI::UIHandle* UI::UIObject::getHandle() {
     if (handle == nullptr) {

@@ -10,6 +10,8 @@
 #include <filesystem>
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include "error.hpp"
 #include "fileUtil.hpp"
 #include "exitfuncs.hpp"
@@ -21,6 +23,12 @@ bool debugMode = true;
 #else
 bool debugMode = false;
 #endif
+
+struct UniformBufferObject {
+    glm::mat4x4 model;
+    glm::mat4x4 view;
+    glm::mat4x4 proj;
+};
 
 const int MAX_FRAMES_IN_FLIGHT = 1;
 
@@ -97,6 +105,9 @@ std::vector<VkImageView> swapChainImageViews;
 
 VkShaderModule defaultShaderModule = VK_NULL_HANDLE;
 VkRenderPass renderPass = VK_NULL_HANDLE;
+
+VkDescriptorSetLayout descriptorSetLayout;
+
 VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 VkPipeline defaultPipeline = VK_NULL_HANDLE;
 
@@ -108,6 +119,12 @@ VkBuffer stagingBuffer;
 VmaAllocation stagingAllocation;
 VkBuffer vertexBuffer;
 VmaAllocation vertexAllocation;
+VkBuffer indexBuffer;
+VmaAllocation indexAllocation;
+
+std::vector<VkBuffer> uniformBuffers;
+std::vector<VmaAllocation> uniformAllocations;
+std::vector<void*> uniformBuffersMapped;
 
 VkCommandPool commandPool = VK_NULL_HANDLE;
 std::vector<VkCommandBuffer> commandBuffers;
@@ -696,6 +713,25 @@ bool initGfx(SDL_Window* win) {
         return false;
     }
 
+    // CREATE DESCRIPTOR SET LAYOUT
+    VkDescriptorSetLayoutBinding uboLayoutBinding = {
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        .pImmutableSamplers = nullptr
+    };
+
+    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = 1,
+        .pBindings = &uboLayoutBinding
+    };
+    if (vkCreateDescriptorSetLayout(device, &descriptorSetLayoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+        setErr("Could not create descriptor set layout");
+        return false;
+    }
+
     // CREATE GRAPHICS PIPELINE
     // A new graphics pipeline should be created for each shader program we intend to use, but right now we are just gonna use one
     // Compile Shaders
@@ -850,8 +886,8 @@ bool initGfx(SDL_Window* win) {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
-        .setLayoutCount = 0,
-        .pSetLayouts = nullptr,
+        .setLayoutCount = 1,
+        .pSetLayouts = &descriptorSetLayout,
         .pushConstantRangeCount = 0,
         .pPushConstantRanges = nullptr
     };
@@ -917,7 +953,7 @@ bool initGfx(SDL_Window* win) {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
-        .size = sizeof(triangleVerticies[0]) * triangleVerticies.size(),
+        .size = sizeof(rectangleVerticies[0]) * rectangleVerticies.size(),
         .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
@@ -926,19 +962,19 @@ bool initGfx(SDL_Window* win) {
         .usage = VMA_MEMORY_USAGE_AUTO,
         .requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
     };
-    if (vmaCreateBuffer(allocator, &stagingBufferInfo, &stagingAllocInfo, &stagingBuffer, &stagingAllocation, nullptr)) {
+    if (vmaCreateBuffer(allocator, &stagingBufferInfo, &stagingAllocInfo, &stagingBuffer, &stagingAllocation, nullptr) != VK_SUCCESS) {
         setErr("Failed to allocate staging buffer memory");
         return false;
     }
     // TODO: Get rid of this when dynamically managing the vertex buffer! OLD!
-    vmaCopyMemoryToAllocation(allocator, triangleVerticies.data(), stagingAllocation, 0, (size_t)stagingBufferInfo.size);
+    vmaCopyMemoryToAllocation(allocator, rectangleVerticies.data(), stagingAllocation, 0, (size_t)stagingBufferInfo.size);
 
     // Vertex
     VkBufferCreateInfo vertexBufferInfo {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
-        .size = sizeof(triangleVerticies[0]) * triangleVerticies.size(),
+        .size = sizeof(rectangleVerticies[0]) * rectangleVerticies.size(),
         .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
@@ -947,13 +983,64 @@ bool initGfx(SDL_Window* win) {
         .usage = VMA_MEMORY_USAGE_AUTO,
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     };
-    if (vmaCreateBuffer(allocator, &vertexBufferInfo, &vertexAllocInfo, &vertexBuffer, &vertexAllocation, nullptr)) {
+    if (vmaCreateBuffer(allocator, &vertexBufferInfo, &vertexAllocInfo, &vertexBuffer, &vertexAllocation, nullptr) != VK_SUCCESS) {
         setErr("Failed to allocate vertex buffer memory");
         return false;
     }
 
     // TODO: Get rid of this when dynamically managing vertex buffer! OLD!
     copyBuffer(stagingBuffer, vertexBuffer, (VkDeviceSize)stagingBufferInfo.size);
+
+    // Index
+    VkBufferCreateInfo indexBufferInfo {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .size = sizeof(rectangleIndices[0]) * rectangleIndices.size(),
+        .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
+    VmaAllocationCreateInfo indexAllocInfo {
+        .flags = 0,
+        .usage = VMA_MEMORY_USAGE_AUTO,
+        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    }; 
+    if (vmaCreateBuffer(allocator, &indexBufferInfo, &indexAllocInfo, &indexBuffer, &indexAllocation, nullptr)  != VK_SUCCESS) {
+        setErr("Failed to allocate index buffer memory");
+        return false;
+    }
+
+    // TODO: Get rid of this when dynamically managing index buffer! OLD!
+    vmaCopyMemoryToAllocation(allocator, rectangleIndices.data(), stagingAllocation, 0, (size_t)indexBufferInfo.size);
+    copyBuffer(stagingBuffer, indexBuffer, (size_t)indexBufferInfo.size);
+
+    // Uniform
+    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+    uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    uniformAllocations.resize(MAX_FRAMES_IN_FLIGHT);
+    uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VkBufferCreateInfo uniformBufferInfo {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .size = bufferSize,
+            .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+        };
+        VmaAllocationCreateInfo uniformAllocInfo {
+            .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+            .usage = VMA_MEMORY_USAGE_AUTO,
+            .requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+        }; 
+        if (vmaCreateBuffer(allocator, &uniformBufferInfo, &uniformAllocInfo, &uniformBuffers[i], &uniformAllocations[i], nullptr) != VK_SUCCESS) {
+            setErr("Failed to create Uniform Buffers");
+            return false;
+        }
+        vmaMapMemory(allocator, uniformAllocations[i], &uniformBuffersMapped[i]);
+    }
 
     // COMMAND POOL CREATION
     VkCommandPoolCreateInfo commandPoolInfo = {
@@ -1040,6 +1127,8 @@ void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex, VkP
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
+    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
     VkViewport viewport = {
         .x = 0.0f,
         .y = 0.0f,
@@ -1056,7 +1145,7 @@ void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex, VkP
     };
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    vkCmdDraw(commandBuffer, static_cast<uint32_t>(triangleVerticies.size()), 1, 0, 0); // Draw a triangle (3 vertices)
+    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(rectangleIndices.size()), 1, 0, 0, 0);
 
     vkCmdEndRenderPass(commandBuffer);
     
@@ -1082,9 +1171,18 @@ void gfxUpdate(AmiusAdventure::Scene::Scene* scene) {
     }
 
     vkResetFences(device, 1, &inFlightFences[currentFrame]);
-
     vkResetCommandBuffer(commandBuffers[currentFrame], 0);
+
     recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
+
+    // process uniforms
+    // TODO: Do once for each object
+    UniformBufferObject ubo {};
+    ubo.model = glm::mat4x4(1.0f); // TODO: Update model per drawn asset
+    ubo.view = scene->ctx.camera->getTransform();
+    ubo.proj = glm::perspective(scene->ctx.camera->fovY, swapChainExtent.width / (float) swapChainExtent.height, scene->ctx.camera->zNear, scene->ctx.camera->zFar);
+    ubo.proj[1][1] *= -1;
+    memcpy(uniformBuffersMapped[currentFrame], &ubo, sizeof(ubo));
 
     VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[currentFrame]};
     VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
@@ -1142,8 +1240,14 @@ void gfxQuit() {
     vkDestroyCommandPool(device, commandPool, nullptr);
     vmaDestroyBuffer(allocator, stagingBuffer, stagingAllocation);
     vmaDestroyBuffer(allocator, vertexBuffer, vertexAllocation);
+    vmaDestroyBuffer(allocator, indexBuffer, indexAllocation);
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        vmaUnmapMemory(allocator, uniformAllocations[i]);
+        vmaDestroyBuffer(allocator, uniformBuffers[i], uniformAllocations[i]);
+    }
     vmaDestroyAllocator(allocator);
     cleanupSwapChain();
+    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
     vkDestroyPipeline(device, defaultPipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyRenderPass(device, renderPass, nullptr);

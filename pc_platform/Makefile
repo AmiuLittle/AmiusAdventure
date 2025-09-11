@@ -18,6 +18,15 @@ all: $(VERT_SPV) $(FRAG_SPV) $(SHADER_SPV_LINUX)
 	mv build/$(ARCH)/linux/src/AmiusAdventurePC ../target/$(ARCH)/linux/AmiusAdventurePC.$(ARCH)
 	mv build/$(ARCH)/linux/data ../target/$(ARCH)/linux
 
+release: $(VERT_SPV) $(FRAG_SPV) $(SHADER_SPV_LINUX)
+	mkdir -p build/$(ARCH)/linux
+	cp -r data build/$(ARCH)/linux
+	cd build/$(ARCH)/linux && cmake -DCMAKE_BUILD_TYPE=Release ../../.. && make
+	rm -rf ../target/$(ARCH)/linux || true
+	mkdir -p ../target/$(ARCH)/linux
+	mv build/$(ARCH)/linux/src/AmiusAdventurePC ../target/$(ARCH)/linux/AmiusAdventurePC.$(ARCH)
+	mv build/$(ARCH)/linux/data ../target/$(ARCH)/linux
+
 build/$(ARCH)/linux/data/gfx/shaders/%.spv: build/shaders/%.vert.spv build/shaders/%.frag.spv
 	mkdir -p build/$(ARCH)/linux/data/gfx/shaders
 	spirv-link $^ -o $@

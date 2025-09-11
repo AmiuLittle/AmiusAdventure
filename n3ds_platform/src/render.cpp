@@ -293,6 +293,24 @@ void drawText(std::string text, glm::vec3 position, glm::vec2 scale, u32 color, 
     C2D_TextBufClear(textBuf);
 }
 
+void renderAll(AmiusAdventure::Scene::Object* parent) {
+    switch (parent->data.type) {
+    case AmiusAdventure::Scene::RENDER_CUBE:
+        drawCube(parent->data.texture, mat4x4_to_C3D_Mtx(parent->getTransform()));
+        break;
+    case AmiusAdventure::Scene::RENDER_MODEL:
+        drawModel(parent->data.model, parent->data.texture, mat4x4_to_C3D_Mtx(parent->getTransform()));
+        break;
+    default:
+        break;
+    }
+    for (int i = 0; i < parent->children.size(); i++) {
+        if (parent->children[i] != nullptr) {
+            renderAll(&(*parent->children[i]));
+        }
+    }
+}
+
 void gfxUpdateTop(AmiusAdventure::Scene::Scene* scene, float iod) {
     /* 3D RENDERING */
     // top screen
@@ -309,20 +327,8 @@ void gfxUpdateTop(AmiusAdventure::Scene::Scene* scene, float iod) {
     C3D_FVec lightPos = FVec4_New(16.0f, 0.5f, 0.0f, 0.0f);
     C3D_LightPosition(&light, &lightPos);
 
-    for (size_t i = 0; i < scene->objects.size(); i++) {
-        if (scene->objects[i].has_value()) {
-            AmiusAdventure::Scene::Object* object = &(*scene->objects[i]);
-            switch (object->data.type) {
-            case AmiusAdventure::Scene::RENDER_CUBE:
-                drawCube(object->data.texture, mat4x4_to_C3D_Mtx(object->getTransform()));
-                break;
-            case AmiusAdventure::Scene::RENDER_MODEL:
-                drawModel(object->data.model, object->data.texture, mat4x4_to_C3D_Mtx(object->getTransform()));
-                break;
-            default:
-                break;
-            }
-        }
+    for (size_t i = 0; i < scene->root->children.size(); i++) {
+        renderAll(&(*scene->root->children[i]));
     }
 
     /* 2D RENDERING */
@@ -330,7 +336,7 @@ void gfxUpdateTop(AmiusAdventure::Scene::Scene* scene, float iod) {
     C2D_Prepare();
 
     for (size_t i = 0; i < scene->uiObjects.size(); i++) {
-        if (scene->uiObjects[i].has_value()) {
+        if (scene->uiObjects[i] != nullptr) {
             AmiusAdventure::Scene::UI::UIObject* object = &(*scene->uiObjects[i]);
             switch (object->data.type) {
             case AmiusAdventure::Scene::UI::RENDER_TEXT:
@@ -350,7 +356,7 @@ void gfxUpdateBottom(AmiusAdventure::Scene::Scene* scene) {
     C2D_Prepare();
 
     for (size_t i = 0; i < scene->uiObjects.size(); i++) {
-        if (scene->uiObjects[i].has_value()) {
+        if (scene->uiObjects[i] != nullptr) {
             AmiusAdventure::Scene::UI::UIObject* object = &(*scene->uiObjects[i]);
             switch (object->data.type) {
             case AmiusAdventure::Scene::UI::RENDER_TEXT:

@@ -5,6 +5,7 @@
 #include <array>
 #include <channel.hpp>
 #include <glm/glm.hpp>
+#include <memory>
 #include "audio_interface.hpp"
 #include "asset_provider_interface.hpp"
 
@@ -140,30 +141,32 @@ namespace AmiusAdventure {
 
         class Object {
         private:
-            Handle* handle = nullptr;
             glm::mat4x4 transform;
+            bool isDirty;
         public:
+            Object();
+            Object(RenderData, glm::vec3, glm::vec3, glm::vec3, void(*tick)(Object*, SceneCtx*, Input::InputState*));
+            std::weak_ptr<Object> self;
             RenderData data;
             glm::vec3 position;
             glm::vec3 rotation;
             glm::vec3 scale;
-            bool isDirty;
             void (*tick)(Object*, SceneCtx*, Input::InputState*);
-            Object();
-            Object(RenderData, glm::vec3, glm::vec3, glm::vec3, void(*tick)(Object*, SceneCtx*, Input::InputState*));
+            std::weak_ptr<Object> parent;
+            std::vector<std::shared_ptr<Object>> children = {};
+
+            static std::shared_ptr<Object> Create();
+            static std::shared_ptr<Object> Create(RenderData, glm::vec3, glm::vec3, glm::vec3, void(*tick)(Object*, SceneCtx*, Input::InputState*));
+
             ~Object();
-            Handle* getHandle();
             void setPosition(glm::vec3);
             void setRotation(glm::vec3);
             void setScale(glm::vec3);
             glm::mat4x4 getTransform();
             bool isVisible(Math::Frustum*);
-        };
-
-        struct Handle {
-        public:
-            bool valid;
-            Object* data;
+            bool addChild(std::shared_ptr<Object>);
+            void markDirty();
+            void tickAll(SceneCtx*, Input::InputState*);
         };
 
         class Camera {
@@ -197,8 +200,8 @@ namespace AmiusAdventure {
 
         class Scene {
         public:
-            std::array<std::optional<Object>, 256> objects;
-            std::array<std::optional<UI::UIObject>, 256> uiObjects;
+            std::shared_ptr<Object> root;
+            std::array<std::shared_ptr<UI::UIObject>, 256> uiObjects;
             SceneCtx ctx;
             Scene(Camera*, AudioInterface*);
             ~Scene();

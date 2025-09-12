@@ -109,6 +109,7 @@ bool Object::addChild(std::shared_ptr<Object> object) {
     if (object.get() != nullptr) {
         if (object->parent.lock() == nullptr) {
             object->parent = this->self;
+            this->children.push_back(object);
         }
         else {
             setErr("Cannot add child that already has a parent");

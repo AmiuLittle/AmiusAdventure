@@ -328,9 +328,7 @@ void gfxUpdateTop(AmiusAdventure::Scene::Scene* scene, float iod) {
     C3D_FVec lightPos = FVec4_New(16.0f, 0.5f, 0.0f, 0.0f);
     C3D_LightPosition(&light, &lightPos);
 
-    for (size_t i = 0; i < scene->root->children.size(); i++) {
-        renderAll(&(*scene->root->children[i]));
-    }
+    renderAll(&(*scene->root));
 
     /* 2D RENDERING */
     // top screen

@@ -21,7 +21,6 @@
 #define CLEAR_COLOR C2D_Color32(0x00, 0x00, 0x00, 0xFF)
 
 struct TextureData {
-    Tex3DS_Texture t3x;
     C3D_Tex tex;
     C3D_TexCube tcube;
 };
@@ -169,19 +168,21 @@ bool loadTex(std::string path) {
 
     loadedTextures.insert({path, TextureData {}});
 
-    loadedTextures[path].t3x = Tex3DS_TextureImport(data, fileSize, &loadedTextures[path].tex, &loadedTextures[path].tcube, false);
-    if (loadedTextures[path].t3x == nullptr) {
+    Tex3DS_Texture t3x = Tex3DS_TextureImport(data, fileSize, &loadedTextures[path].tex, &loadedTextures[path].tcube, false);
+    if (t3x == nullptr) {
         loadedTextures.erase(path);
         setErr("Texture could not be loaded from: " + path);
         return false;
     }
+
+    Tex3DS_TextureFree(t3x);
+
     return true;
 }
 
 void unloadAllTex() {
     for (auto texture = loadedTextures.begin(); texture != loadedTextures.end(); ++texture) {
         C3D_TexDelete(&(*texture).second.tex);
-        Tex3DS_TextureFree((*texture).second.t3x);
     }
 }
 

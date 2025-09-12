@@ -4,7 +4,6 @@
 #include <3ds.h>
 #include <c3d/maths.h>
 #include <stdlib.h>
-#include <iostream>
 #include "amius_adventure.hpp"
 #include "channel.hpp"
 #include "n3dslink.hpp"

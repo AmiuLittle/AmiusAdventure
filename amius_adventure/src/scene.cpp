@@ -7,8 +7,7 @@
 using namespace AmiusAdventure::Scene;
 
 Scene::Scene(Camera* camera, AudioInterface* audio) {
-    root = std::make_shared<Object>();
-    root->self = root;
+    root = Object::Create();
     std::fill(uiObjects.begin(), uiObjects.end(), nullptr);
     this->ctx = SceneCtx {
         .deltaTime = std::chrono::milliseconds(),

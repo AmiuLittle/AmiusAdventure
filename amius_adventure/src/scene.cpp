@@ -41,7 +41,7 @@ void Scene::tick(Input::InputState* inputState) {
 }
 
 Object::Object() : data(RenderData {
-    .type = RENDER_CUBE,
+    .type = RENDER_EMPTY,
     .model = "none",
     .texture = "none",
     .dimension = {1, 1, 1},

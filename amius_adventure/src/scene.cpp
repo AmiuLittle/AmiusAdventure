@@ -123,7 +123,7 @@ bool Object::addChild(std::shared_ptr<Object> object) {
 
 void Object::markDirty() {
     this->isDirty = true;
-    for (int i = 0; i < this->children.size(); i) {
+    for (int i = 0; i < this->children.size(); i++) {
         if (this->children[i] != nullptr) {
             this->children[i]->markDirty();
         }

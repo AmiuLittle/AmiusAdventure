@@ -11,6 +11,7 @@ add_subdirectory(../amius_adventure amius_adventure_engine)
 
 add_subdirectory(../SDL EXCLUDE_FROM_ALL sdl)
 add_subdirectory(../SDL_mixer EXCLUDE_FROM_ALL sdl_mixer)
+find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 
 include_directories(${PROJECT_SOURCE_DIR}/../include)
 
@@ -20,6 +21,6 @@ else()
     find_package(Vulkan REQUIRED)
 endif()
 find_package(glm CONFIG REQUIRED)
-find_package(VulkanMemoryAllocator CONFIG REQUIRED)
+find_package(SDL3_image REQUIRED)
 
 add_subdirectory(src)

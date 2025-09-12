@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
     if (!initControllerMap()) {
         exitWithErrorWindow("Failed to initialize controller map:" + getErr());
     }
-
+    
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC)) {
         exitWithErrorWindow(std::string("Failed to initialize SDL: ") + SDL_GetError());
     }
@@ -47,17 +47,17 @@ int main(int argc, char** argv) {
         exitWithErrorWindow(std::string("Failed to create SDL mainWindow: ") + SDL_GetError());
     }
     float aspectRatio = 800.0f / 600.0f; // Default aspect ratio
-
+    
     SDL_SetWindowPosition(mainWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     
     if (!initGfx(mainWindow)) {
         exitWithErrorWindow("Failed to initialize graphics: " + getErr());
     }
-
+    
     SDL_ShowWindow(mainWindow);
-
+    
     audioEngine = new AudioEngine();
-
+    
     AmiusAdventure::Scene::Camera* topCamera = new AmiusAdventure::Scene::Camera(glm::vec3{0, 0, 0}, glm::vec3{0, 0, 0}, 0.01f, 1000.0f, DegreesToRadians(40.0f), aspectRatio, nullptr);
     AmiusAdventure::Scene::Camera* bottomCamera = new AmiusAdventure::Scene::Camera(glm::vec3{0, 0, 0}, glm::vec3{0, 0, 0}, 0.01f, 1000.0f, DegreesToRadians(40.0f), aspectRatio, nullptr);
     

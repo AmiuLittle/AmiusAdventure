@@ -25,9 +25,9 @@ bool debugMode = false;
 #endif
 
 struct UniformBufferObject {
-    glm::mat4x4 model;
-    glm::mat4x4 view;
-    glm::mat4x4 proj;
+    alignas(16) glm::mat4x4 model;
+    alignas(16) glm::mat4x4 view;
+    alignas(16) glm::mat4x4 proj;
 };
 
 const int MAX_FRAMES_IN_FLIGHT = 1;
@@ -125,6 +125,9 @@ VmaAllocation indexAllocation;
 std::vector<VkBuffer> uniformBuffers;
 std::vector<VmaAllocation> uniformAllocations;
 std::vector<void*> uniformBuffersMapped;
+
+VkDescriptorPool descriptorPool;
+std::vector<VkDescriptorSet> descriptorSets;
 
 VkCommandPool commandPool = VK_NULL_HANDLE;
 std::vector<VkCommandBuffer> commandBuffers;
@@ -838,7 +841,7 @@ bool initGfx(SDL_Window* win) {
         .rasterizerDiscardEnable = VK_FALSE,
         .polygonMode = VK_POLYGON_MODE_FILL,
         .cullMode = VK_CULL_MODE_BACK_BIT,
-        .frontFace = VK_FRONT_FACE_CLOCKWISE,
+        .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
         .depthBiasEnable = VK_FALSE,
         .depthBiasConstantFactor = 0.0f,
         .depthBiasClamp = 0.0f,
@@ -1042,6 +1045,56 @@ bool initGfx(SDL_Window* win) {
         vmaMapMemory(allocator, uniformAllocations[i], &uniformBuffersMapped[i]);
     }
 
+    // DESCRIPTOR POOL CREATION
+    VkDescriptorPoolSize descriptorPoolSize = {
+        .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT)
+    };
+    VkDescriptorPoolCreateInfo descriptorPoolInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
+        .poolSizeCount = 1,
+        .pPoolSizes = &descriptorPoolSize
+    };
+    if (vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
+        setErr("Failed to create descriptor pool");
+        return false;
+    }
+
+    // DESCRIPTOR SET CREATION
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
+    VkDescriptorSetAllocateInfo descriptorSetAllocInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool = descriptorPool,
+        .descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
+        .pSetLayouts = descriptorSetLayouts.data()
+    };
+    descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    if (vkAllocateDescriptorSets(device, &descriptorSetAllocInfo, descriptorSets.data()) != VK_SUCCESS) {
+        setErr("Failed to create descriptor sets");
+        return false;
+    }
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VkDescriptorBufferInfo bufferInfo = {
+            .buffer = uniformBuffers[i],
+            .offset = 0,
+            .range = sizeof(UniformBufferObject)
+        };
+        VkWriteDescriptorSet writeInfo = {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = descriptorSets[i],
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .pImageInfo = nullptr,
+            .pBufferInfo = &bufferInfo,
+            .pTexelBufferView = nullptr
+        };
+        vkUpdateDescriptorSets(device, 1, &writeInfo, 0, nullptr);
+    }
+
     // COMMAND POOL CREATION
     VkCommandPoolCreateInfo commandPoolInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -1145,6 +1198,7 @@ void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex, VkP
     };
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
     vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(rectangleIndices.size()), 1, 0, 0, 0);
 
     vkCmdEndRenderPass(commandBuffer);
@@ -1178,7 +1232,7 @@ void gfxUpdate(AmiusAdventure::Scene::Scene* scene) {
     // process uniforms
     // TODO: Do once for each object
     UniformBufferObject ubo {};
-    ubo.model = glm::mat4x4(1.0f); // TODO: Update model per drawn asset
+    ubo.model = scene->root->children[0]->getTransform(); // TODO: Update model per drawn asset
     ubo.view = scene->ctx.camera->getTransform();
     ubo.proj = glm::perspective(scene->ctx.camera->fovY, swapChainExtent.width / (float) swapChainExtent.height, scene->ctx.camera->zNear, scene->ctx.camera->zFar);
     ubo.proj[1][1] *= -1;
@@ -1238,6 +1292,8 @@ void gfxQuit() {
     }
     vkFreeCommandBuffers(device, commandPool, 1, commandBuffers.data());
     vkDestroyCommandPool(device, commandPool, nullptr);
+    vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
     vmaDestroyBuffer(allocator, stagingBuffer, stagingAllocation);
     vmaDestroyBuffer(allocator, vertexBuffer, vertexAllocation);
     vmaDestroyBuffer(allocator, indexBuffer, indexAllocation);

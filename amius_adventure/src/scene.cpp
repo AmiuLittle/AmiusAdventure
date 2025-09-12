@@ -98,11 +98,15 @@ bool Object::isVisible(Math::Frustum* frustum) {
 }
 
 std::shared_ptr<Object> Object::Create() {
-    return std::make_shared<Object>();
+    auto output = std::make_shared<Object>();
+    output->self = output;
+    return output;
 }
 
 std::shared_ptr<Object> Object::Create(RenderData data, glm::vec3 pos, glm::vec3 rot, glm::vec3 scale, void(*tick)(Object*, SceneCtx*, Input::InputState*)) {
-    return std::make_shared<Object>(data, pos, rot, scale, tick);
+    auto output = std::make_shared<Object>(data, pos, rot, scale, tick);
+    output->self = output;
+    return output;
 }
 
 bool Object::addChild(std::shared_ptr<Object> object) {

@@ -119,6 +119,7 @@ bool Object::addChild(std::shared_ptr<Object> object) {
         setErr("Cannot add child that is null");
         return false;
     }
+    return true;
 }
 
 void Object::markDirty() {

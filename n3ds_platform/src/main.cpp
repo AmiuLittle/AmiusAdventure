@@ -58,7 +58,7 @@ int main() {
             break;
         }
 
-        gfxUpdate(topScene, bottomScene, iod / 12);
+        gfxUpdate(topScene, bottomScene, iod / 32);
 
         checkPanic();
 

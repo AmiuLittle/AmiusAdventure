@@ -45,14 +45,14 @@ Object::Object() : data(RenderData {
     .model = "none",
     .texture = "none",
     .dimension = {1, 1, 1},
-}), position({0, 0, 0}), rotation({0, 0, 0}), scale({1, 1, 1}), tick(nullptr) {}
+}), position({0, 0, 0}), rotation({0, 0, 0}), scale({1, 1, 1}), tick(nullptr), isDirty(true) {}
 
 Object::~Object() {
     
 }
 
 Object::Object(RenderData data, glm::vec3 position = glm::vec3{0, 0, 0}, glm::vec3 rotation = glm::vec3{0, 0, 0}, glm::vec3 scale = glm::vec3{1, 1, 1}, void(*tick)(Object*, SceneCtx*, Input::InputState*) = nullptr) : 
-data(data), position{position.x, position.y, position.z}, rotation{rotation.x, rotation.y, rotation.z}, scale{scale.x, scale.y, scale.z}, tick(tick) {}
+data(data), position{position.x, position.y, position.z}, rotation{rotation.x, rotation.y, rotation.z}, scale{scale.x, scale.y, scale.z}, tick(tick), isDirty(true) {}
 
 void Object::setPosition(glm::vec3 position) {
     this->position.x = position.x;

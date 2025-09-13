@@ -10,8 +10,8 @@ Scene::Scene(Camera* camera, AudioInterface* audio) {
     root = Object::Create();
     std::fill(uiObjects.begin(), uiObjects.end(), nullptr);
     this->ctx = SceneCtx {
-        .deltaTime = std::chrono::milliseconds(),
-        .tickStart = std::chrono::steady_clock::now(),
+        .deltaTime = std::chrono::microseconds(),
+        .tickStart = std::chrono::high_resolution_clock::now(),
 		.camera = camera,
         .animationTimer = 0,
         .audio = audio,
@@ -25,8 +25,8 @@ Scene::~Scene() {
 }
 
 void Scene::tick(Input::InputState* inputState) {
-    this->ctx.deltaTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this->ctx.tickStart);
-    this->ctx.tickStart = std::chrono::steady_clock::now();
+    this->ctx.deltaTime = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - this->ctx.tickStart);
+    this->ctx.tickStart = std::chrono::high_resolution_clock::now();
     this->root->tickAll(&this->ctx, inputState);
     for (int i = 0; i < this->uiObjects.size(); i++) {
         if (this->uiObjects[i].get() != nullptr && (*this->uiObjects[i]).tick != nullptr) {

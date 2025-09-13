@@ -189,8 +189,8 @@ namespace AmiusAdventure {
         };
 
         struct SceneCtx {
-            std::chrono::milliseconds deltaTime;
-            std::chrono::steady_clock::time_point tickStart;
+            std::chrono::microseconds deltaTime;
+            std::chrono::high_resolution_clock::time_point tickStart;
             Camera* camera;
             u32 animationTimer; // ticks once every ms
             AudioInterface* audio;

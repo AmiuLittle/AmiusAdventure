@@ -12,16 +12,16 @@ void moveCamera(Scene::Camera* camera, Scene::SceneCtx* ctx, Input::InputState* 
     if (inputState->kHeld & ANY_DPAD_OR_CIRCLE_PAD_DIRECTION) {
         camera->isDirty = true;
         if (inputState->kHeld & Input::KEY_UP) {
-            camera->position.y += 0.5 * ((float)ctx->deltaTime.count() / 1000.0f);
+            camera->position.y += 0.5 * ((float)ctx->deltaTime.count() / 1000000.0f);
         }
         if (inputState->kHeld & Input::KEY_LEFT) {
-            camera->position.x -= 0.5 * ((float)ctx->deltaTime.count() / 1000.0f);
+            camera->position.x -= 0.5 * ((float)ctx->deltaTime.count() / 1000000.0f);
         }
         if (inputState->kHeld & Input::KEY_DOWN) {
-            camera->position.y -= 0.5 * ((float)ctx->deltaTime.count() / 1000.0f);
+            camera->position.y -= 0.5 * ((float)ctx->deltaTime.count() / 1000000.0f);
         }
         if (inputState->kHeld & Input::KEY_RIGHT) {
-            camera->position.x += 0.5 * ((float)ctx->deltaTime.count() / 1000.0f);
+            camera->position.x += 0.5 * ((float)ctx->deltaTime.count() / 1000000.0f);
         }
     }
 }

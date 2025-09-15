@@ -312,26 +312,23 @@ void renderAll(AmiusAdventure::Scene::Object* parent) {
     }
 }
 
-void gfxUpdateTop(AmiusAdventure::Scene::Scene* scene, float iod) {
+void gfxUpdateScene(AmiusAdventure::Scene::Scene* scene, float iod, bool topScene) {
     /* 3D RENDERING */
-    // top screen
     sceneBind();
 
     C3D_Mtx projection;
     Mtx_PerspStereoTilt(&projection, scene->ctx.camera->fovY, scene->ctx.camera->aspect, scene->ctx.camera->zNear, scene->ctx.camera->zFar, iod, 2.0f, false);
-    //glm::mat4x4 projection = glm::perspective(scene->ctx.camera->fovY, scene->ctx.camera->aspect, scene->ctx.camera->zNear, scene->ctx.camera->zFar);
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
 
     cameraView = mat4x4_to_C3D_Mtx(scene->ctx.camera->getTransform());
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_cameraView, &cameraView);
 
-    C3D_FVec lightPos = FVec4_New(16.0f, 0.5f, 0.0f, 0.0f);
+    C3D_FVec lightPos = FVec4_New(0.0f, 0.0f, 16.0f, 0.0f);
     C3D_LightPosition(&light, &lightPos);
 
     renderAll(&(*scene->root));
 
     /* 2D RENDERING */
-    // top screen
     C2D_Prepare();
 
     for (size_t i = 0; i < scene->uiObjects.size(); i++) {
@@ -339,7 +336,7 @@ void gfxUpdateTop(AmiusAdventure::Scene::Scene* scene, float iod) {
             AmiusAdventure::Scene::UI::UIObject* object = &(*scene->uiObjects[i]);
             switch (object->data.type) {
             case AmiusAdventure::Scene::UI::RENDER_TEXT:
-                drawText(object->data.text, object->position, object->scale, object->data.basecolor, object->data.align, object->data.dimension[0], true);
+                drawText(object->data.text, object->position, object->scale, object->data.basecolor, object->data.align, object->data.dimension[0], topScene);
                 break;
             default:
                 break;
@@ -350,42 +347,24 @@ void gfxUpdateTop(AmiusAdventure::Scene::Scene* scene, float iod) {
     C2D_Flush();
 }
 
-void gfxUpdateBottom(AmiusAdventure::Scene::Scene* scene) {
-    // bottom screen
-    C2D_Prepare();
-
-    for (size_t i = 0; i < scene->uiObjects.size(); i++) {
-        if (scene->uiObjects[i] != nullptr) {
-            AmiusAdventure::Scene::UI::UIObject* object = &(*scene->uiObjects[i]);
-            switch (object->data.type) {
-            case AmiusAdventure::Scene::UI::RENDER_TEXT:
-                drawText(object->data.text, object->position, object->scale, object->data.basecolor, object->data.align, object->data.dimension[0], false);
-                break;
-            } 
-        }
-    }
-
-   C2D_Flush();
-}
-
 void gfxUpdate(AmiusAdventure::Scene::Scene* topScene, AmiusAdventure::Scene::Scene* bottomScene, float iod) {
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
     {
         C3D_RenderTargetClear(topLeft, C3D_CLEAR_ALL, C3D_CLEAR_COLOR, 0);
         C3D_FrameDrawOn(topLeft);
         C2D_SceneTarget(topLeft);
-        gfxUpdateTop(topScene, -iod);
+        gfxUpdateScene(topScene, -iod, true);
         if (iod > 0.0f) {
             C3D_RenderTargetClear(topRight, C3D_CLEAR_ALL, C3D_CLEAR_COLOR, 0);
             C3D_FrameDrawOn(topRight);
             C2D_SceneTarget(topRight);
-            gfxUpdateTop(topScene, iod);
+            gfxUpdateScene(topScene, iod, true);
         }
 
         C3D_RenderTargetClear(bottom, C3D_CLEAR_ALL, C3D_CLEAR_COLOR, 0);
         C3D_FrameDrawOn(bottom);
         C2D_SceneTarget(bottom);
-        gfxUpdateBottom(bottomScene);
+        gfxUpdateScene(bottomScene, 0, false);
     }
     C3D_FrameEnd(0);
 }

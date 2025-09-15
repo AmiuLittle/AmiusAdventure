@@ -26,6 +26,8 @@ Engine::Engine(std::string platform, void(*softPanic)(std::string), Scene::Scene
 
     topScene->root->addChild(NEW_EMPTY(0, 0, 0, 0, 0, 0, 1, 1, 1, playMusic));
 
+    bottomScene->ctx.camera->position.z = 1;
+    bottomScene->root->addChild(NEW_MODEL(assetProvider->getAssetLocation("/models/3DSLogo", MODEL_ASSET_TYPE), assetProvider->getAssetLocation("/gfx/3DSLogoTex", TEXTURE_ASSET_TYPE), 0, 0, -3.0, 0, -90 * (M_PI/180), 0, 1, 1, 1, rotateCubeTickOneAxis));
     bottomScene->uiObjects[0] = NEW_UI_TEXT("Press Start to Exit", 1, 0xFFFFFFFF, Scene::UI::ALIGN_CENTER, .5, .92, 0, 0, .5, .5, false, false, nullptr);
 }
 

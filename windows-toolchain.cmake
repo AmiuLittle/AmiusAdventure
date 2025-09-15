@@ -17,3 +17,5 @@ set(CMAKE_IGNORE_PATH "/usr/include;/usr/local/include")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_WIN32 -D_WIN64")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_WIN32 -D_WIN64")
+
+include_directories(/usr/x86_64-w64-mingw32/include)

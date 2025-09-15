@@ -20,7 +20,7 @@ Engine::Engine(std::string platform, void(*softPanic)(std::string), Scene::Scene
     topScene->uiObjects[1] = NEW_UI_TEXT("Delta Time: 0ms", 1, 0xFFFFFFFF, Scene::UI::ALIGN_LEFT, 0, .06, 0, 0, 0.5, 0.5, false, false, fpsCounterTick);
 
     topScene->root->addChild(NEW_MODEL(assetProvider->getAssetLocation("/models/3DSSuzanne", MODEL_ASSET_TYPE), assetProvider->getAssetLocation("/gfx/UBSuzanneTex", TEXTURE_ASSET_TYPE), 0, 0, -3.0, 0, 0, 0, 0.5, 0.5, 0.5, rotateCubeTick));
-    topScene->root->children.back()->addChild(NEW_CUBE(assetProvider->getAssetLocation("/gfx/commonTex", TEXTURE_ASSET_TYPE), 1, 1, 1, 0, 0, -3.0, 0, 0, 0, 2, 2, 2, rotateCubeTick));
+    topScene->root->children.back()->addChild(NEW_CUBE(assetProvider->getAssetLocation("/gfx/kittyTex", TEXTURE_ASSET_TYPE), 1, 1, 1, 0, 0, -3.0, 0, 0, 0, 2, 2, 2, rotateCubeTick));
     // no assets yet
     // topScene->objects[2] = NEW_3D_SPRITE("romfs:/gfx/marioTex.t3x", 1, 1, 64, 64, 41, 25, 250, 12, 0, 0, 0, 1, 1, frontPlayerTick);
 

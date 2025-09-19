@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
             if (flipScreen()) {
                 useSecondScene = !useSecondScene;
             }
-            gfxUpdate(useSecondScene ? bottomScene : topScene);
+            gfxUpdate(useSecondScene ? bottomScene : topScene, !useSecondScene);
         }
     }
 

@@ -7,7 +7,7 @@ void setFramebufferResized();
 
 bool initGfx(SDL_Window*);
 
-void gfxUpdate(AmiusAdventure::Scene::Scene*);
+void gfxUpdate(AmiusAdventure::Scene::Scene*, bool);
 
 void gfxQuit();
 

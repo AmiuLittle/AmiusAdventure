@@ -416,10 +416,7 @@ bool loadModel(std::string path, std::map<std::string, ModelData>* loadedModels)
             // C3D_BufInfo
             BufInfo_Init(&iprimitive->vbo_info);
             BufInfo_Add(&iprimitive->vbo_info, iprimitive->vbo_data, sizeof(Vertex), 3, 0x210);
-
-            primitives.reset();
         }
-        meshes.reset();
     }
     linearFree(binChunkHeader.chunkData);
     linearFree(jsonChunkHeader.chunkData);

@@ -125,18 +125,43 @@ namespace AmiusAdventure {
         }
 
         enum RenderType {
+            RENDER_PLANE,
             RENDER_CUBE,
             RENDER_MODEL,
-            RENDER_3DSPRITE,
             RENDER_EMPTY
         };
 
-        struct RenderData {
+        enum ShaderInputType {
+            SHADER_INPUT_TYPE_TEXTURE2D,
+            SHADER_INPUT_TYPE_FLOAT,
+            SHADER_INPUT_TYPE_VEC2,
+            SHADER_INPUT_TYPE_VEC3,
+            SHADER_INPUT_TYPE_VEC4,
+        };
+
+        struct ShaderInput {
+            ShaderInputType type;
+            std::optional<std::string> texturePath;
+            std::optional<glm::vec4> numberData;
+        };
+
+        struct Material {
+            std::string shaderPath;
+            std::vector<ShaderInput> shaderInputs; // each index corresponds to a descriptor in a descriptor set starting at binding 1 in the shader (this is becuase the projection and view matrices get the first binding)
+        };
+
+        class RenderData {
+        public:
             RenderType type;
-            std::string model;
-            std::string texture; // normally a path to a t3x file, will be treated as a path to an .alst file if RenderType is set to RENDER_3DSPRITE
-            glm::vec3 dimension;
-            std::optional<SpriteData> spriteData;
+            std::shared_ptr<std::string> model;
+            std::shared_ptr<Material> material; // if null then a default material will be used
+
+            RenderData();
+            RenderData Plane(std::weak_ptr<Material> material);
+            RenderData Cube(std::weak_ptr<Material> material);
+            RenderData Model(std::shared_ptr<std::string> model, std::weak_ptr<Material> material);
+
+            void changeMaterial(std::weak_ptr<Material> material);
         };
 
         class Object {
@@ -202,10 +227,14 @@ namespace AmiusAdventure {
         public:
             std::shared_ptr<Object> root;
             std::array<std::shared_ptr<UI::UIObject>, 256> uiObjects;
+            std::vector<std::shared_ptr<Material>> materials;
+            std::vector<std::shared_ptr<std::string>> models;
             SceneCtx ctx;
             Scene(Camera*, AudioInterface*);
             ~Scene();
             void tick(Input::InputState*);
+            std::weak_ptr<Material> registerMaterial();
+            std::weak_ptr<std::string> registerModel();
         };
     }
 

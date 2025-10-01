@@ -20,6 +20,9 @@
 #include "exitfuncs.hpp"
 #include "renderPrimitives.hpp"
 #include "shapes.hpp"
+#include "globalVulkanVars.hpp"
+#include "vulkanBufferUtils.hpp"
+#include "gltfLoader.hpp"
 
 #ifdef DEBUG
 bool debugMode = true;
@@ -34,6 +37,8 @@ struct GlobalUniformBufferObject {
 
 const int MAX_FRAMES_IN_FLIGHT = 1;
 const VkDeviceSize STAGING_BUFFER_SIZE = 1024 * 1024 * 64; // 64MB
+const VkDeviceSize VERTEX_BUFFER_SIZE = 1024 * 1024 * 128; // 128MB
+const VkDeviceSize INDEX_BUFFER_SIZE = 1024 * 1024 * 128; // 128MB
 const size_t SIZE_MAT4 = 64;
 
 struct VkTexture {
@@ -44,6 +49,7 @@ struct VkTexture {
 
 VkSampler genericSampler = VK_NULL_HANDLE;
 std::map<std::string, VkTexture> loadedTextures = {};
+std::map<std::string, ModelData> loadedModels = {};
 
 SDL_Window* window = nullptr;
 
@@ -93,21 +99,12 @@ std::vector<const char*> deviceExtensions = {
 };
 
 VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-struct QueueFamilyIndicies {
-    std::optional<uint32_t> graphicsFamily = std::nullopt;
-    std::optional<uint32_t> presentFamily = std::nullopt;
-};
-QueueFamilyIndicies deviceQueueFamilyIndices;
 struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
 };
 SwapChainSupportDetails deviceSwapChainSupportDetails;
-
-VkDevice device;
-VkQueue graphicsQueue;
-VkQueue presentQueue;
 
 VkSwapchainKHR swapChain;
 std::vector<VkImage> swapChainImages;
@@ -126,15 +123,6 @@ VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 VkPipeline defaultPipeline = VK_NULL_HANDLE;
 
 std::vector<VkFramebuffer> swapChainFramebuffers;
-
-VmaAllocator allocator;
-
-VkBuffer stagingBuffer;
-VmaAllocation stagingAllocation;
-VkBuffer vertexBuffer;
-VmaAllocation vertexAllocation;
-VkBuffer indexBuffer;
-VmaAllocation indexAllocation;
 
 std::vector<VkBuffer> uniformBuffers;
 std::vector<VmaAllocation> uniformAllocations;
@@ -158,6 +146,8 @@ std::vector<VkFence> inFlightFences;
 
 uint32_t currentFrame = 0;
 bool framebufferResized = false;
+uint32_t cubeVertexOffset = 0;
+uint32_t cubeFirstVertex = 0;
 
 VkFormat SDL3FormatToVulkan(SDL_PixelFormat format) { // TODO: add other formats
     switch (format) {
@@ -369,85 +359,6 @@ bool createFramebuffers() {
             setErr("Failed to create framebuffer for swap chain image " + std::to_string(i));
             return false;
         }
-    }
-
-    return true;
-}
-
-bool startOneTimeCmdBuffer(std::pair<VkCommandPool, VkCommandBuffer>* output) {
-    VkCommandPool tempCommandPool;
-    VkCommandBuffer tempCommandBuffer;
-    VkCommandPoolCreateInfo commandPoolInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = deviceQueueFamilyIndices.graphicsFamily.value()
-    };
-    if (vkCreateCommandPool(device, &commandPoolInfo, nullptr, &tempCommandPool) != VK_SUCCESS) {
-        setErr("Failed to create command pool");
-        return false;
-    }
-
-    VkCommandBufferAllocateInfo commandBufferAllocInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .pNext = nullptr,
-        .commandPool = tempCommandPool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1
-    };
-    if (vkAllocateCommandBuffers(device, &commandBufferAllocInfo, &tempCommandBuffer) != VK_SUCCESS) {
-        setErr("Failed to allocate command buffer");
-        return false;
-    }
-
-    VkCommandBufferBeginInfo beginInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
-    };
-
-    if (vkBeginCommandBuffer(tempCommandBuffer, &beginInfo) != VK_SUCCESS) {
-        setErr("Failed to begin command buffer");
-        return false;
-    }
-
-    *output = std::pair(tempCommandPool, tempCommandBuffer);
-    return true;
-}
-
-bool endOneTimeCmdBuffer(std::pair<VkCommandPool, VkCommandBuffer>* pair) {
-    if (vkEndCommandBuffer(pair->second) != VK_SUCCESS) {
-        setErr("Failed to end command buffer");
-    }
-
-    VkSubmitInfo submitInfo = {
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .commandBufferCount = 1,
-        .pCommandBuffers = &pair->second
-    };
-    vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(graphicsQueue);
-
-    vkFreeCommandBuffers(device, pair->first, 1, &pair->second);
-    vkDestroyCommandPool(device, pair->first, nullptr);
-
-    return true;
-}
-
-bool copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size) {
-    std::pair<VkCommandPool, VkCommandBuffer> pair;
-    if (!startOneTimeCmdBuffer(&pair)) {
-        return false;
-    }
-
-    VkBufferCopy copy = {
-        .srcOffset = 0,
-        .dstOffset = 0,
-        .size = size
-    };
-    vkCmdCopyBuffer(pair.second, src, dst, 1, &copy);
-
-    if (!endOneTimeCmdBuffer(&pair)) {
-        return false;
     }
 
     return true;
@@ -784,6 +695,31 @@ void unloadAllTextures() {
         vmaDestroyImage(allocator, texture.second.image, texture.second.allocation);
     }
     loadedTextures = {};
+}
+
+void unloadSelectModel(std::string path) {
+    if (loadedModels.find(path) != loadedModels.end()) {
+        ModelData model = loadedModels.extract(path).mapped();
+        for (auto& mesh : model.meshes) {
+            for (auto& primitive : mesh.primitives) {
+                primitive.~Primitive();
+            }
+        }
+    }
+    else {
+        std::cerr << "WARNING: unloadSelectModel called for non-existent model: " << path << std::endl;
+    }
+}
+
+void unloadAllModels() {
+    for (auto& model : loadedModels) {
+        for (auto& mesh : model.second.meshes) {
+            for (auto& primitive : mesh.primitives) {
+                primitive.~Primitive();
+            }
+        }
+    }
+    loadedModels = {};
 }
 
 bool initGfx(SDL_Window* win) {
@@ -1372,15 +1308,12 @@ bool initGfx(SDL_Window* win) {
     // TODO: Get rid of this when dynamically managing textures! OLD!
     loadImageTexture("./data/gfx/kittyTex.png");
 
-    // TODO: Get rid of this when dynamically managing the vertex buffer! OLD!
-    vmaCopyMemoryToAllocation(allocator, rectangleVerticies.data(), stagingAllocation, 0, (size_t)sizeof(rectangleVerticies[0]) * rectangleVerticies.size());
-
     // Vertex
     VkBufferCreateInfo vertexBufferInfo {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
-        .size = sizeof(rectangleVerticies[0]) * rectangleVerticies.size(),
+        .size = VERTEX_BUFFER_SIZE,
         .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
@@ -1394,15 +1327,12 @@ bool initGfx(SDL_Window* win) {
         return false;
     }
 
-    // TODO: Get rid of this when dynamically managing vertex buffer! OLD!
-    copyBuffer(stagingBuffer, vertexBuffer, (size_t)sizeof(rectangleVerticies[0]) * rectangleVerticies.size());
-
     // Index
     VkBufferCreateInfo indexBufferInfo {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
-        .size = sizeof(rectangleIndices[0]) * rectangleIndices.size(),
+        .size = INDEX_BUFFER_SIZE,
         .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
@@ -1416,9 +1346,10 @@ bool initGfx(SDL_Window* win) {
         return false;
     }
 
-    // TODO: Get rid of this when dynamically managing index buffer! OLD!
-    vmaCopyMemoryToAllocation(allocator, rectangleIndices.data(), stagingAllocation, 0, (size_t)indexBufferInfo.size);
-    copyBuffer(stagingBuffer, indexBuffer, (size_t)indexBufferInfo.size);
+    vmaCopyMemoryToAllocation(allocator, CUBE, stagingAllocation, 0, sizeof(CUBE));
+    cubeVertexOffset = getNextAvailableVertexSpace(sizeof(CUBE));
+    copyBuffer(stagingBuffer, 0, vertexBuffer, cubeVertexOffset, sizeof(CUBE));
+    cubeFirstVertex = cubeVertexOffset / sizeof(Vertex);
 
     // Uniform
     VkDeviceSize bufferSize = sizeof(GlobalUniformBufferObject);
@@ -1581,6 +1512,60 @@ bool initGfx(SDL_Window* win) {
     return true;
 }
 
+void recordCubeRenderInfo(std::string texture, glm::mat4x4 modelView, VkCommandBuffer commandBuffer) {
+    if (loadedTextures.find(texture) == loadedTextures.end()) {
+        if (!loadImageTexture(texture)) {
+            exitWithErrorWindow(getErr());
+        }
+    }
+
+    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, SIZE_MAT4, glm::value_ptr(modelView));
+
+    vkCmdDraw(commandBuffer, cube_vertex_list_count, 1, cubeFirstVertex, 0);
+}
+
+void recordModelRenderInfo(std::string model, std::string texture, glm::mat4x4 modelView, VkCommandBuffer commandBuffer) {
+    if (loadedModels.find(model) == loadedModels.end()) {
+        if (!loadFromGLB(model, &loadedModels)) {
+            exitWithErrorWindow(getErr());
+        }
+    }
+
+    if (loadedTextures.find(texture) == loadedTextures.end()) {
+        if (!loadImageTexture(texture)) {
+            exitWithErrorWindow(getErr());
+        }
+    }
+
+    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, SIZE_MAT4, glm::value_ptr(modelView));
+
+    for (const auto& mesh : loadedModels[model].meshes) {
+        for (const auto& primitive : mesh.primitives) {
+            switch (primitive.type) {
+            case PRIMITIVE_TYPE_VERTEXES_ONLY:
+                vkCmdDraw(commandBuffer, primitive.vertexCount, 1, primitive.firstVertex, 0);
+            case PRIMITIVE_TYPE_INDEXED:
+                vkCmdDrawIndexed(commandBuffer, primitive.indexCount, 1, primitive.firstIndex, primitive.firstVertex, 0);
+            }
+        }
+    }
+}
+
+void recordAll(AmiusAdventure::Scene::Object* object, VkCommandBuffer commandBuffer) {
+    switch (object->data.type) {
+    case AmiusAdventure::Scene::RENDER_MODEL:
+        recordModelRenderInfo(object->data.model, object->data.texture, object->getTransform(), commandBuffer);
+        break;
+    case AmiusAdventure::Scene::RENDER_CUBE:
+        recordCubeRenderInfo(object->data.texture, object->getTransform(), commandBuffer);
+        break;
+    }
+
+    for (const auto child : object->children) {
+        recordAll(child.get(), commandBuffer);
+    }
+}
+
 void recordCommandBuffer(AmiusAdventure::Scene::Scene* scene, VkCommandBuffer commandBuffer, uint32_t imageIndex, bool isTopScene, VkPipeline pipeline = defaultPipeline) {
     VkCommandBufferBeginInfo beginInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -1623,7 +1608,7 @@ void recordCommandBuffer(AmiusAdventure::Scene::Scene* scene, VkCommandBuffer co
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
     VkViewport viewport = {
         .x = 0.0f,
@@ -1644,7 +1629,7 @@ void recordCommandBuffer(AmiusAdventure::Scene::Scene* scene, VkCommandBuffer co
     // TEMPORARY
     VkDescriptorImageInfo imageInfo = {
         .sampler = genericSampler,
-        .imageView = loadedTextures["./data/gfx/kittyTex.png"].view, // TODO: change this for every texture when we get to drawing individal objects
+        .imageView = loadedTextures["./data/gfx/kittyTex.png"].view, // TODO: change this for every primitive when we get to drawing individal objects
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
     };
     VkWriteDescriptorSet imageDescriptorWrite = {
@@ -1659,13 +1644,7 @@ void recordCommandBuffer(AmiusAdventure::Scene::Scene* scene, VkCommandBuffer co
     vkUpdateDescriptorSets(device, 1, &imageDescriptorWrite, 0, nullptr);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets1[currentFrame], 0, nullptr);
 
-    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, SIZE_MAT4, glm::value_ptr(scene->root->children[0]->getTransform()));
-    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(rectangleIndices.size()), 1, 0, 0, 0);
-
-    if (isTopScene) {
-        vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, SIZE_MAT4, glm::value_ptr(scene->root->children[0]->children[0]->getTransform()));
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(rectangleIndices.size()), 1, 0, 0, 0);
-    }
+    recordAll(scene->root.get(), commandBuffer);
 
     vkCmdEndRenderPass(commandBuffer);
     
@@ -1695,7 +1674,6 @@ void gfxUpdate(AmiusAdventure::Scene::Scene* scene, bool isTopScene) {
     recordCommandBuffer(scene, commandBuffers[currentFrame], imageIndex, isTopScene);
 
     // process uniforms
-    // TODO: Do once for each object
     GlobalUniformBufferObject gubo {};
     gubo.view = scene->ctx.camera->getTransform();
     gubo.proj = glm::perspective(scene->ctx.camera->fovY, swapChainExtent.width / (float) swapChainExtent.height, scene->ctx.camera->zNear, scene->ctx.camera->zFar);

@@ -270,6 +270,16 @@ int AudioEngine::se_numPlaying() {
     return 0;
 }
 
+bool AudioEngine::ls_show() {
+    setErr("ls_show: Not implemented yet!");
+    return false;
+}
+
+bool AudioEngine::ls_stop() {
+    setErr("ls_stop: Not implemented yet!");
+    return false;
+}
+
 int AudioDecoderBase::Decode(uint8_t* buffer, int size) {
     return Decode(buffer, size, 0);
 }

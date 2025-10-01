@@ -9,11 +9,12 @@ add_compile_definitions("DEBUG=$<CONFIG:Debug>")
 
 add_subdirectory(../amius_adventure amius_adventure_engine)
 
-include_directories(${PROJECT_SOURCE_DIR}/../include ${PROJECT_SOURCE_DIR}/../SDL/include ${PROJECT_SOURCE_DIR}/../SDL_mixer/include ${PROJECT_SOURCE_DIR}/../SDL_image/include)
+include_directories(${PROJECT_SOURCE_DIR}/../include ${PROJECT_SOURCE_DIR}/../SDL/include ${PROJECT_SOURCE_DIR}/../SDL_mixer/include ${PROJECT_SOURCE_DIR}/../SDL_image/include ${PROJECT_SOURCE_DIR}/../fastgltf/include)
 
 add_subdirectory(../SDL EXCLUDE_FROM_ALL sdl)
 add_subdirectory(../SDL_mixer EXCLUDE_FROM_ALL sdl_mixer)
 add_subdirectory(../SDL_image EXCLUDE_FROM_ALL sdl_image)
+add_subdirectory(../fastgltf EXCLUDE_FROM_ALL fastgltf)
 
 if (APPLE) 
 find_package(Vulkan REQUIRED COMPONENTS MoltenVK)

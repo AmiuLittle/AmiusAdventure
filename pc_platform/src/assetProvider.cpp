@@ -13,6 +13,9 @@ std::string AssetProvider::getAssetLocation(std::string path, AmiusAdventure::As
         case AmiusAdventure::MODEL_ASSET_TYPE:
             ss << ".glb";
             break;
+        case AmiusAdventure::SHADER_ASSET_TYPE:
+            ss << ".spv";
+            break;
         case AmiusAdventure::MUSIC_ASSET_TYPE:
             ss << ".ogg";
             break;

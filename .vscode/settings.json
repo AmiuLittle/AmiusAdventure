@@ -10,6 +10,8 @@
         "./n3ds_sprite_maker/build/src/.qt/16a2c8",
         "./SDL/include",
         "./SDL_mixer/include",
+        "./SDL_image/include",
+        "./fastgltf/include",
         "/usr/include/qt6",
         "/opt/devkitpro/portlibs/3ds/include",
         "/opt/devkitpro/portlibs/3ds/include/opus"
@@ -115,7 +117,9 @@
         "scoped_allocator": "cpp",
         "spanstream": "cpp",
         "stacktrace": "cpp",
-        "syncstream": "cpp"
+        "syncstream": "cpp",
+        "queue": "cpp",
+        "stack": "cpp"
     },
     "C_Cpp.default.defines": [
         "__3DS__",

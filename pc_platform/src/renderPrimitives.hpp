@@ -3,11 +3,12 @@
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.h>
 #include <array>
+#include <vector>
 
 struct Vertex {
     glm::vec3 pos;
-    glm::vec3 vertexColor;
     glm::vec2 texCoord;
+    glm::vec3 norm;
 
     static constexpr VkVertexInputBindingDescription getBindingDescription() {
         VkVertexInputBindingDescription bindDesc {
@@ -27,20 +28,48 @@ struct Vertex {
             .format = VK_FORMAT_R32G32B32_SFLOAT,
             .offset = offsetof(Vertex, pos)
         };
-        attrDescs[1] = { // color
+        attrDescs[1] = { // UV coords
             .location = 1,
-            .binding = 0,
-            .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = offsetof(Vertex, vertexColor)
-        };
-        attrDescs[2] = { // UV coords
-            .location = 2,
             .binding = 0,
             .format = VK_FORMAT_R32G32_SFLOAT,
             .offset = offsetof(Vertex, texCoord)
         };
+        attrDescs[2] = { // normals
+            .location = 2,
+            .binding = 0,
+            .format = VK_FORMAT_R32G32B32_SFLOAT,
+            .offset = offsetof(Vertex, norm)
+        };
         return attrDescs;
     }
+};
+
+enum PrimitiveType {
+    PRIMITIVE_TYPE_INDEXED,
+    PRIMITIVE_TYPE_VERTEXES_ONLY
+};
+
+class Primitive {
+public:
+    PrimitiveType type;
+    uint32_t vertexDataOffset;
+    uint32_t vertexDataSize;
+    uint32_t firstVertex;
+    uint32_t vertexCount;
+    uint32_t indexDataOffset;
+    uint32_t indexDataSize;
+    uint32_t firstIndex;
+    uint32_t indexCount;
+    Primitive(PrimitiveType type);
+    ~Primitive();
+};
+
+struct Mesh {
+    std::vector<Primitive> primitives;
+};
+
+struct ModelData {
+    std::vector<Mesh> meshes;
 };
 
 #define PC_RENDER_PRIMITIVES

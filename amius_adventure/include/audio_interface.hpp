@@ -33,6 +33,15 @@ struct AudioInterface {
     virtual bool se_play(std::string path) = 0;
     virtual bool se_reset() = 0; // stops all sound effects
     virtual int se_numPlaying() = 0;
+
+    /* LOADING SCREEN:
+         - The 3DS cannot load assets and submit gpu commands to display the loading screen at the same time
+         - Therefore we use the audio thread to submit gpu commands while the main thread loads assets
+         - On the 3DS this will stop all sound processing
+            - For non 3DS platforms you can either stop sound for accuacy or add your own loading screen music
+    */
+    virtual bool ls_show() = 0; // stop all sound processing and start gpu command submission for displaying loading screen
+    virtual bool ls_stop() = 0; // stop gpu command submission (THIS SHOULD NOT RETURN UNTIL AUDIO INTERFACE IS READY TO RECIEVE AUDIO COMMANDS AGAIN)
 };
 
 #define AMIUS_ADVENTURE_AUDIO

@@ -30,6 +30,9 @@ public:
     bool se_reset();
     int se_numPlaying();
 
+    bool ls_show();
+    bool ls_stop();
+
     void lockMutex() const;
     void unlockMutex() const;
 };

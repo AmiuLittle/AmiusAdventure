@@ -39,12 +39,7 @@ void Scene::tick(Input::InputState* inputState) {
     this->ctx.animationTimer += this->ctx.deltaTime.count();
 }
 
-Object::Object() : data(RenderData {
-    .type = RENDER_EMPTY,
-    .model = "none",
-    .texture = "none",
-    .dimension = {1, 1, 1},
-}), position({0, 0, 0}), rotation({0, 0, 0}), scale({1, 1, 1}), tick(nullptr), isDirty(true) {}
+Object::Object() : data(RenderData()), position({0, 0, 0}), rotation({0, 0, 0}), scale({1, 1, 1}), tick(nullptr), isDirty(true) {}
 
 Object::~Object() {
     

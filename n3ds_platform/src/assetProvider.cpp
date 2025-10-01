@@ -1,5 +1,6 @@
 #include "assetProvider.hpp"
 #include <sstream>
+#include <filesystem>
 
 AssetProvider::AssetProvider() {}
 
@@ -12,6 +13,9 @@ std::string AssetProvider::getAssetLocation(std::string path, AmiusAdventure::As
             break;
         case AmiusAdventure::MODEL_ASSET_TYPE:
             ss << ".glb";
+            break;
+        case AmiusAdventure::SHADER_ASSET_TYPE:
+            return std::filesystem::path(path).filename().string();
             break;
         case AmiusAdventure::MUSIC_ASSET_TYPE:
             ss << ".ogg";

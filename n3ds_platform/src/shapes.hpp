@@ -65,7 +65,7 @@ static constexpr Vertex CUBE[] =
 	{ {-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f}, {0.0f, -1.0f, 0.0f} },
 };
 
-#define cube_vertex_list_count (sizeof(CUBE)/sizeof(CUBE[0]))
+uint32_t cube_vertex_list_count = (sizeof(CUBE)/sizeof(CUBE[0]));
 
 #define N3DS_PLATFORM_SHAPES
 #endif

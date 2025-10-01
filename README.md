@@ -1,3 +1,7 @@
+# ⚠️ THIS REPOSITORY HAS BEEN DEPRECATED ⚠️
+This is because the Game Engine that makes Amiu's Adventure work has been moved to [Citra Engine](https://github.com/CitraEngine/Citra-Engine)
+As for Amiu's Adventure itself, the project has been closed to the public.
+
 # AmiusAdventure
 A cross platform furry RPG game similar to the Mario &amp; Luigi series games
 
